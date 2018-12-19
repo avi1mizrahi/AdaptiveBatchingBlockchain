@@ -1,4 +1,5 @@
-import ClientServerCommunication.ClientServerComm;
+import ClientServerCommunication.CreateAccountReq;
+import ClientServerCommunication.CreateAccountRes;
 import ClientServerCommunication.TransferGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -19,9 +20,8 @@ public class Client {
             return;
         }
 
-        ClientServerComm.CreateAccountReq request = ClientServerComm.CreateAccountReq.newBuilder()
-                                                                                     .build();
-        ClientServerComm.CreateAccountRes response;
+        CreateAccountReq request = CreateAccountReq.newBuilder().build();
+        CreateAccountRes response;
 
         try {
             response = stub.createAccount(request);

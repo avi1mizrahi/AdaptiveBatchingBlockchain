@@ -1,4 +1,6 @@
-import ClientServerCommunication.ClientServerComm;
+import ClientServerCommunication.Account;
+import ClientServerCommunication.CreateAccountReq;
+import ClientServerCommunication.CreateAccountRes;
 import ClientServerCommunication.TransferGrpc;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -11,11 +13,11 @@ public class Server {
 
         ServerBuilder.forPort(50505).addService(new TransferGrpc.TransferImplBase() {
             @Override
-            public void createAccount(ClientServerComm.CreateAccountReq request,
-                                      StreamObserver<ClientServerComm.CreateAccountRes> responseObserver) {
+            public void createAccount(CreateAccountReq request,
+                                      StreamObserver<CreateAccountRes> responseObserver) {
                 System.out.println("SERVER: " + request);
-                var account = ClientServerComm.Account.newBuilder().setId(50).build();
-                var res = ClientServerComm.CreateAccountRes.newBuilder().setAccount(account).build();
+                var account = Account.newBuilder().setId(50).build();
+                var res = CreateAccountRes.newBuilder().setAccount(account).build();
                 responseObserver.onNext(res);
                 responseObserver.onCompleted();
             }
