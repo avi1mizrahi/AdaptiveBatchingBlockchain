@@ -7,7 +7,7 @@ import java.io.IOException;
 
 
 public class Server {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
 
         ServerBuilder.forPort(50505).addService(new TransferGrpc.TransferImplBase() {
             @Override
@@ -17,8 +17,9 @@ public class Server {
                 var account = ClientServerComm.Account.newBuilder().setId(50).build();
                 var res = ClientServerComm.CreateAccountRes.newBuilder().setAccount(account).build();
                 responseObserver.onNext(res);
+                responseObserver.onCompleted();
             }
 
-        }).build().start();
+        }).build().start().awaitTermination();
     }
 }

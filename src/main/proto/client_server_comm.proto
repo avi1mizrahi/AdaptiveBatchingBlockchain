@@ -34,6 +34,6 @@ message TransactionRes {
 
 
 service Transfer {
-    rpc CreateAccount (CreateAccountReq) returns (CreateAccountRes) {}
-    rpc Transact (TransactionReq) returns (TransactionRes) {}
+    rpc createAccount (CreateAccountReq) returns (CreateAccountRes) {}
+    rpc transact (TransactionReq) returns (TransactionRes) {}
 }
