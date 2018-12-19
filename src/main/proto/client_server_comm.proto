@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+//option java_multiple_files = true;
+//option java_package = "io.grpc.examples.helloworld";
+
+package ClientServerCommunication;
+
+
+message Account {
+    uint32 id   = 1;
+}
+
+message CreateAccountReq {
+}
+
+message CreateAccountRes {
+    bool    success = 1;
+    Account account = 2;
+}
+
+message Transaction {
+    Account from    = 1;
+    Account to      = 2;
+    uint32  amount  = 3;
+}
+
+message TransactionReq {
+    Transaction tx = 1;
+}
+
+message TransactionRes {
+    bool success = 1;
+}
+
+
+service Transfer {
+    rpc CreateAccount (CreateAccountReq) returns (CreateAccountRes) {}
+    rpc Transact (TransactionReq) returns (TransactionRes) {}
+}
