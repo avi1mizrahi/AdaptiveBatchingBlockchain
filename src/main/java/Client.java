@@ -26,17 +26,33 @@ public class Client {
         // TODO: somehow make the test run once with a mock-server (aka unittest)
         //        and once with the real server which we haven't yet (aka integration test)
 
-        var client    = new Client("localhost", 55555);
-        var account1 = client.createAccount().get();
-        var account2 = client.createAccount().get();
+        var client1  = new Client("localhost", 55555);
+        var client2  = new Client("localhost", 55555);
+        var account1 = client1.createAccount().get();
+        var account2 = client1.createAccount().get();
+        var account3 = client2.createAccount().get();
+        var account4 = client2.createAccount().get();
 
-        client.addAmount(account1, 50);
-        client.transfer(account1, account2, 50);
-        assert client.getAmount(account1).getAsInt() == 0;
-        assert client.getAmount(account2).getAsInt() == 50;
+        client1.addAmount(account1, 100);
+        client1.addAmount(account3, 100);
 
-        client.deleteAccount(account1);
-        client.deleteAccount(account2);
+        client2.transfer(account1, account2, 50);
+        client2.transfer(account1, account3, 50);
+
+        assert client1.getAmount(account1).getAsInt() == 0;
+        assert client2.getAmount(account2).getAsInt() == 50;
+        assert client1.getAmount(account3).getAsInt() == 150;
+        assert client2.getAmount(account4).getAsInt() == 0;
+
+        client1.transfer(account3, account1, 150);
+
+        assert client2.getAmount(account1).getAsInt() == 150;
+        assert client1.getAmount(account3).getAsInt() == 0;
+
+        client1.deleteAccount(account1);
+        client2.deleteAccount(account2);
+        client1.deleteAccount(account3);
+        client2.deleteAccount(account4);
     }
 
     Optional<Account> createAccount() {
@@ -84,6 +100,6 @@ public class Client {
 
         Account(int id) {this.id = id;}
 
-        public int getId() {return id;}
+        int getId() {return id;}
     }
 }
