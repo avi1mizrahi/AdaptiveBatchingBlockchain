@@ -12,7 +12,9 @@ public class Server {
     private final io.grpc.Server                      clientListener;
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        var server = new Server(55555);
+        Integer port = 55555;
+        if (args.length >= 1) port = Integer.valueOf(args[0]);
+        var server = new Server(port);
         server.awaitTermination();
     }
 
