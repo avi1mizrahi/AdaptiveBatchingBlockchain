@@ -5,34 +5,55 @@ option java_multiple_files = true;
 package ClientServerCommunication;
 
 
-message Account {
-    uint32 id   = 1;
-}
-
 message CreateAccountReq {
 }
-
-message CreateAccountRes {
+message CreateAccountRsp {
     bool    success = 1;
-    Account account = 2;
+    uint32  id      = 2;
 }
 
-message Transaction {
-    Account from    = 1;
-    Account to      = 2;
-    uint32  amount  = 3;
+
+message DeleteAccountReq {
+    uint32 accountId = 2;
+}
+message DeleteAccountRsp {
 }
 
-message TransactionReq {
-    Transaction tx = 1;
-}
 
-message TransactionRes {
+message SetAmountReq {
+    uint32 accountId = 2;
+    uint32 amount    = 3;
+}
+message SetAmountRsp {
     bool success = 1;
 }
 
 
-service Transfer {
-    rpc createAccount (CreateAccountReq) returns (CreateAccountRes) {}
-    rpc transact (TransactionReq) returns (TransactionRes) {}
+message GetAmountReq {
+    uint32 accountId = 2;
 }
+message GetAmountRsp {
+    bool    success = 1;
+    uint32  amount  = 3;
+}
+
+
+message TransactionReq {
+    uint32 fromId   = 1;
+    uint32 toId     = 2;
+    uint32 amount   = 3;
+}
+message TransactionRsp {
+    bool success = 1;
+}
+
+
+service Client {
+    // Can be splitted into "banker" and "ATM" services
+    rpc createAccount (CreateAccountReq) returns (CreateAccountRsp) {}
+    rpc deleteAccount (DeleteAccountReq) returns (DeleteAccountRsp) {}
+    rpc setAmount     (SetAmountReq    ) returns (SetAmountRsp    ) {}
+    rpc getAmount     (GetAmountReq    ) returns (GetAmountRsp    ) {}
+    rpc transfer      (TransactionReq  ) returns (TransactionRsp  ) {}
+}
+
