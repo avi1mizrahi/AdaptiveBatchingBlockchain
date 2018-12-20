@@ -20,11 +20,11 @@ message DeleteAccountRsp {
 }
 
 
-message SetAmountReq {
+message AddAmountReq {
     uint32 accountId = 2;
     uint32 amount    = 3;
 }
-message SetAmountRsp {
+message AddAmountRsp {
     bool success = 1;
 }
 
@@ -52,7 +52,7 @@ service Client {
     // Can be splitted into "banker" and "ATM" services
     rpc createAccount (CreateAccountReq) returns (CreateAccountRsp) {}
     rpc deleteAccount (DeleteAccountReq) returns (DeleteAccountRsp) {}
-    rpc setAmount     (SetAmountReq    ) returns (SetAmountRsp    ) {}
+    rpc addAmount     (AddAmountReq    ) returns (AddAmountRsp    ) {}
     rpc getAmount     (GetAmountReq    ) returns (GetAmountRsp    ) {}
     rpc transfer      (TransactionReq  ) returns (TransactionRsp  ) {}
 }
