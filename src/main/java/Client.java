@@ -6,6 +6,8 @@ import java.util.OptionalInt;
 
 
 public class Client {
+// TODO: optional (I'm not sure if it's cost-effective):
+//       - write here a main-loop that will receive commands interactively
 
     private static ClientGrpc.ClientBlockingStub stub;
 

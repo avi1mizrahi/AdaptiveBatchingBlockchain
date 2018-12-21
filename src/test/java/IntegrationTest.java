@@ -2,10 +2,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-// TODO: create a mock-server (we can use "mockito" for mocking automation)
 // TODO: add tests for basic scenarios
-// TODO: optional (I'm not sure if it's cost-effective):
-//       - write here a main-loop that will receive commands interactively
+//
+// optional:
+// TODO: create a mock-server for client unittest (we can use "mockito" for mocking automation)
 // TODO: somehow make the test run once with a mock-server (aka unittest)
 //        and once with the real server which we haven't yet (aka integration test)
 
