@@ -3,13 +3,12 @@ import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server {
-    private final ConcurrentHashMap<Integer, Integer> data   = new ConcurrentHashMap<>();
-    private       AtomicInteger                       lastId = new AtomicInteger();
-    private final io.grpc.Server                      clientListener;
+    private final Ledger         ledger = new Ledger();
+    private       AtomicInteger  lastId = new AtomicInteger();
+    private final io.grpc.Server clientListener;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Integer port = 55555;
@@ -38,7 +37,7 @@ public class Server {
             var rspBuilder = CreateAccountRsp.newBuilder();
 
             int id = lastId.incrementAndGet();
-            if (data.putIfAbsent(id, 0) == null) { //new account
+            if (ledger.newAccount(id)) { //new account
                 rspBuilder.setId(id).setSuccess(true);
                 System.out.println("SERVER: Created ID:" + id);
             }
@@ -52,7 +51,7 @@ public class Server {
                                   StreamObserver<DeleteAccountRsp> responseObserver) {
             int accountId = request.getAccountId();
             System.out.println("SERVER: Delete account:" + accountId);
-            data.remove(accountId);
+            ledger.deleteAccount(accountId);
 
             responseObserver.onNext(DeleteAccountRsp.getDefaultInstance());
             responseObserver.onCompleted();
@@ -65,7 +64,7 @@ public class Server {
             System.out.println("SERVER: Account " + id + ", add " + amount);
             var rspBuilder = AddAmountRsp.newBuilder();
 
-            rspBuilder.setSuccess(add(amount, id));
+            rspBuilder.setSuccess(ledger.add(id, amount));
 
             responseObserver.onNext(rspBuilder.build());
             responseObserver.onCompleted();
@@ -77,7 +76,7 @@ public class Server {
             System.out.println("SERVER: getAmount " + id);
             var rspBuilder = GetAmountRsp.newBuilder();
 
-            var amount = data.get(id);
+            var amount = ledger.get(id);
             if (amount != null) {
                 rspBuilder.setAmount(amount);
                 rspBuilder.setSuccess(true);
@@ -97,35 +96,12 @@ public class Server {
             System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
             var rspBuilder = TransferRsp.newBuilder();
 
-            var ref = new Object() {
-                boolean executed;
-            };
-
-            data.computeIfPresent(from,
-                                  (id_, currentAmount) ->
-                                  {
-                                      var newAmount = currentAmount - amount;
-                                      if (newAmount < 0) return currentAmount;
-                                      ref.executed = true;
-                                      return newAmount;
-                                  });
-            if (ref.executed)
-                rspBuilder.setSuccess(add(amount, to));
+            if (ledger.subtract(from, amount))
+                rspBuilder.setSuccess(ledger.add(to, amount));
 
             responseObserver.onNext(rspBuilder.build());
             responseObserver.onCompleted();
         }
 
-        private boolean add(int amount, int to) {
-            Integer newValue = data.computeIfPresent(to,
-                                                     (id_, currentAmount) ->
-                                                             currentAmount + amount);
-
-            if (newValue != null) {
-                System.out.println("SERVER: Account " + to + " now has " + newValue);
-                return true;
-            }
-            return false;
-        }
     }
 }
