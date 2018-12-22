@@ -89,13 +89,13 @@ public class Server {
         }
 
         @Override
-        public void transfer(TransactionReq request,
-                             StreamObserver<TransactionRsp> responseObserver) {
+        public void transfer(TransferReq request,
+                             StreamObserver<TransferRsp> responseObserver) {
             int amount = request.getAmount();
             int from   = request.getFromId();
             int to     = request.getToId();
             System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
-            var rspBuilder = TransactionRsp.newBuilder();
+            var rspBuilder = TransferRsp.newBuilder();
 
             var ref = new Object() {
                 boolean executed;
@@ -111,18 +111,6 @@ public class Server {
                                   });
             if (ref.executed)
                 rspBuilder.setSuccess(add(amount, to));
-
-//            Integer currentAmount;
-//            Integer newAmount = -1;
-//            do {
-//                currentAmount = data.get(from);
-//                if (currentAmount == null) break;
-//                newAmount = currentAmount - amount;
-//            } while (newAmount >= 0 && !data.replace(from, currentAmount, newAmount));
-//
-//            if (currentAmount != null && newAmount >= 0) {
-//                rspBuilder.setSuccess(add(amount, to));
-//            }
 
             responseObserver.onNext(rspBuilder.build());
             responseObserver.onCompleted();

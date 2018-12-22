@@ -38,12 +38,12 @@ message GetAmountRsp {
 }
 
 
-message TransactionReq {
+message TransferReq {
     uint32 fromId   = 1;
     uint32 toId     = 2;
     uint32 amount   = 3;
 }
-message TransactionRsp {
+message TransferRsp {
     bool success = 1;
 }
 
@@ -54,6 +54,6 @@ service Client {
     rpc deleteAccount (DeleteAccountReq) returns (DeleteAccountRsp) {}
     rpc addAmount     (AddAmountReq    ) returns (AddAmountRsp    ) {}
     rpc getAmount     (GetAmountReq    ) returns (GetAmountRsp    ) {}
-    rpc transfer      (TransactionReq  ) returns (TransactionRsp  ) {}
+    rpc transfer      (TransferReq     ) returns (TransferRsp     ) {}
 }
 

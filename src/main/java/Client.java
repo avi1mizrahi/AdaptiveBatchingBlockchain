@@ -49,11 +49,11 @@ public class Client {
     }
 
     boolean transfer(Account from, Account to, int amount) {
-        var response = stub.transfer(TransactionReq.newBuilder()
-                                                   .setFromId(from.getId())
-                                                   .setToId(to.getId())
-                                                   .setAmount(amount)
-                                                   .build());
+        var response = stub.transfer(TransferReq.newBuilder()
+                                                .setFromId(from.getId())
+                                                .setToId(to.getId())
+                                                .setAmount(amount)
+                                                .build());
         return response.getSuccess();
     }
 
