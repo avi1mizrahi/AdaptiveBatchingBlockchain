@@ -6,9 +6,10 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server {
-    private final Ledger         ledger = new Ledger();
-    private       AtomicInteger  lastId = new AtomicInteger();
-    private final io.grpc.Server clientListener;
+    private final Ledger              ledger       = new Ledger();
+    private       OpenedBlock         currentBlock = new OpenedBlock();
+    private final AtomicInteger       lastId       = new AtomicInteger();
+    private final io.grpc.Server      clientListener;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Integer port = 55555;
@@ -26,6 +27,7 @@ public class Server {
     }
 
     void shutdown() {
+        System.out.println(currentBlock.toString());// TODO: delete
         clientListener.shutdown();
     }
 
@@ -34,13 +36,17 @@ public class Server {
         public void createAccount(CreateAccountReq request,
                                   StreamObserver<CreateAccountRsp> responseObserver) {
             System.out.println("SERVER: Create account");
-            var rspBuilder = CreateAccountRsp.newBuilder();
 
             int id = lastId.incrementAndGet();
+
+            currentBlock.append(new NewAccountTx(id), responseObserver);
+
+            var rspBuilder = CreateAccountRsp.newBuilder();
             if (ledger.newAccount(id)) { //new account
                 rspBuilder.setId(id).setSuccess(true);
                 System.out.println("SERVER: Created ID:" + id);
             }
+
 
             responseObserver.onNext(rspBuilder.build());
             responseObserver.onCompleted();
@@ -51,6 +57,9 @@ public class Server {
                                   StreamObserver<DeleteAccountRsp> responseObserver) {
             int accountId = request.getAccountId();
             System.out.println("SERVER: Delete account:" + accountId);
+
+            currentBlock.append(new DeleteAccountTx(accountId), responseObserver);
+
             ledger.deleteAccount(accountId);
 
             responseObserver.onNext(DeleteAccountRsp.getDefaultInstance());
@@ -62,8 +71,10 @@ public class Server {
             int amount = request.getAmount();
             int id     = request.getAccountId();
             System.out.println("SERVER: Account " + id + ", add " + amount);
-            var rspBuilder = AddAmountRsp.newBuilder();
 
+            currentBlock.append(new DepositTx(id, amount), responseObserver);
+
+            var rspBuilder = AddAmountRsp.newBuilder();
             rspBuilder.setSuccess(ledger.add(id, amount));
 
             responseObserver.onNext(rspBuilder.build());
@@ -94,8 +105,10 @@ public class Server {
             int from   = request.getFromId();
             int to     = request.getToId();
             System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
-            var rspBuilder = TransferRsp.newBuilder();
 
+            currentBlock.append(new TransferTx(from, to, amount), responseObserver);
+
+            var rspBuilder = TransferRsp.newBuilder();
             if (ledger.subtract(from, amount))
                 rspBuilder.setSuccess(ledger.add(to, amount));
 
