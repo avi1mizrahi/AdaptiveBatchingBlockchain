@@ -13,15 +13,15 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class Server {
-    private final Ledger            ledger       = new Ledger();
-    private final List<OpenedBlock> chain        = new ArrayList<>();// TODO: should not OpenedBlock, or at least rename to "Block"
-    private final AtomicInteger     lastId       = new AtomicInteger();
-    private final ReadWriteLock     rwLock       = new ReentrantReadWriteLock();
-    private final AtomicBoolean     terminating  = new AtomicBoolean(false);
-    private final io.grpc.Server    clientListener;
-    private final Thread            appender     = new Thread(new Appender());
-    private       Duration          blockWindow;
-    private       OpenedBlock       currentBlock = new OpenedBlock();
+    private final Ledger         ledger       = new Ledger();
+    private final List<Block>    chain        = new ArrayList<>();
+    private final AtomicInteger  lastId       = new AtomicInteger();
+    private final ReadWriteLock  rwLock       = new ReentrantReadWriteLock();
+    private final AtomicBoolean  terminating  = new AtomicBoolean(false);
+    private final io.grpc.Server clientListener;
+    private final Thread         appender     = new Thread(new Appender());
+    private       Duration       blockWindow;
+    private       BlockBuilder   blockBuilder = new BlockBuilder();
 
     Server(int port, Duration blockWindow) {
         this.blockWindow = blockWindow;
@@ -58,18 +58,17 @@ public class Server {
                                 .collect(Collectors.joining("\n",
                                                             "=== CHAIN AT EXIT: ===\n",
                                                             "\n")));
-        assert currentBlock.isEmpty();
+        assert blockBuilder.isEmpty();
     }
 
     private void trySealBlock() {
-        final var   wLock = rwLock.writeLock();
-        OpenedBlock block = null;
+        final var wLock = rwLock.writeLock();
+        Block     block = null;
 
         wLock.lock();
         try {
-            if (!currentBlock.isEmpty()) {
-                block = currentBlock;
-                currentBlock = new OpenedBlock();
+            if (!blockBuilder.isEmpty()) {
+                block = blockBuilder.seal();
             }
         } finally {
             wLock.unlock();
@@ -91,7 +90,7 @@ public class Server {
 
             int id = lastId.incrementAndGet();
 
-            currentBlock.append(new NewAccountTx(id).setResponse(responseObserver));
+            blockBuilder.append(new NewAccountTx(id).setResponse(responseObserver));
         }
 
         @Override
@@ -103,7 +102,7 @@ public class Server {
             final var rLock = rwLock.readLock();
             rLock.lock();
             try {
-                currentBlock.append(new DeleteAccountTx(accountId).setResponse(responseObserver));
+                blockBuilder.append(new DeleteAccountTx(accountId).setResponse(responseObserver));
             } finally {
                 rLock.unlock();
             }
@@ -118,7 +117,7 @@ public class Server {
             final var rLock = rwLock.readLock();
             rLock.lock();
             try {
-                currentBlock.append(new DepositTx(id, amount).setResponse(responseObserver));
+                blockBuilder.append(new DepositTx(id, amount).setResponse(responseObserver));
             } finally {
                 rLock.unlock();
             }
@@ -152,7 +151,7 @@ public class Server {
             final var rLock = rwLock.readLock();
             rLock.lock();
             try {
-                currentBlock.append(new TransferTx(from, to, amount).setResponse(responseObserver));
+                blockBuilder.append(new TransferTx(from, to, amount).setResponse(responseObserver));
             } finally {
                 rLock.unlock();
             }
