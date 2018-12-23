@@ -1,5 +1,4 @@
 import ClientServerCommunication.*;
-import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
@@ -21,23 +20,19 @@ public class Server {
     private final AtomicBoolean     terminating  = new AtomicBoolean(false);
     private final io.grpc.Server    clientListener;
     private final Thread            appender     = new Thread(new Appender());
-    private       Duration          blockWindow  = java.time.Duration.ofSeconds(1);
+    private       Duration          blockWindow;
     private       OpenedBlock       currentBlock = new OpenedBlock();
 
-    Server(int port) {
-        clientListener = ServerBuilder.forPort(port).addService(new ClientRpc()).build();
+    Server(int port, Duration blockWindow) {
+        this.blockWindow = blockWindow;
+        clientListener = io.grpc.ServerBuilder.forPort(port).addService(new ClientRpc()).build();
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
         int port = 55555;
         if (args.length >= 1) port = Integer.parseInt(args[0]);
-        var server = new Server(port).start();
+        var server = new ServerBuilder().setPort(port).createServer().start();
         server.awaitTermination();
-    }
-
-    Server setBlockWindow(Duration windowSize) {
-        blockWindow = windowSize;
-        return this;
     }
 
     Server start() throws IOException {
@@ -67,7 +62,7 @@ public class Server {
     }
 
     private void trySealBlock() {
-        final var wLock = rwLock.writeLock();
+        final var   wLock = rwLock.writeLock();
         OpenedBlock block = null;
 
         wLock.lock();
