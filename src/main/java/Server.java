@@ -31,7 +31,7 @@ public class Server {
     public static void main(String[] args) throws IOException, InterruptedException {
         int port = 55555;
         if (args.length >= 1) port = Integer.parseInt(args[0]);
-        var server = new Server(port);
+        var server = new Server(port).start();
         server.awaitTermination();
     }
 
