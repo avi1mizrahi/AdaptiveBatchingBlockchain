@@ -3,23 +3,37 @@ import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class Server {
-    private final Ledger              ledger       = new Ledger();
-    private       OpenedBlock         currentBlock = new OpenedBlock();
-    private final AtomicInteger       lastId       = new AtomicInteger();
-    private final io.grpc.Server      clientListener;
-
-    public static void main(String[] args) throws IOException, InterruptedException {
-        Integer port = 55555;
-        if (args.length >= 1) port = Integer.valueOf(args[0]);
-        var server = new Server(port);
-        server.awaitTermination();
-    }
+    private final Ledger            ledger       = new Ledger();
+    private final List<OpenedBlock> chain        = new ArrayList<>();// TODO: should not OpenedBlock, or at least rename to "Block"
+    private final AtomicInteger     lastId       = new AtomicInteger();
+    private final ReadWriteLock     rwLock       = new ReentrantReadWriteLock();
+    private final AtomicBoolean     terminating  = new AtomicBoolean(false);
+    private final io.grpc.Server    clientListener;
+    private final Thread            appender;
+    private       int               blockTimeout = 100;
+    private       OpenedBlock       currentBlock = new OpenedBlock();
 
     Server(int port) throws IOException {
+        appender = new Thread(new Appender());
+        appender.start();
         clientListener = ServerBuilder.forPort(port).addService(new ClientRpc()).build().start();
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        int port = 55555;
+        if (args.length >= 1) port = Integer.parseInt(args[0]);
+        var server = new Server(port);
+        server.awaitTermination();
     }
 
     void awaitTermination() throws InterruptedException {
@@ -27,8 +41,41 @@ public class Server {
     }
 
     void shutdown() {
-        System.out.println(currentBlock.toString());// TODO: delete
+        terminating.setRelease(true);
         clientListener.shutdown();
+        try {
+            appender.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println(chain.stream()
+                                .map(Objects::toString)
+                                .collect(Collectors.joining("\n",
+                                                            "=== CHAIN AT EXIT: ===\n",
+                                                            "\n")));
+        assert currentBlock.isEmpty();
+    }
+
+    private void trySealBlock() {
+        final var wLock = rwLock.writeLock();
+        OpenedBlock block = null;
+
+        wLock.lock();
+        try {
+            if (!currentBlock.isEmpty()) {
+                block = currentBlock;
+                currentBlock = new OpenedBlock();
+            }
+        } finally {
+            wLock.unlock();
+        }
+
+        if (block != null) {
+            block.apply(ledger);
+            chain.add(block);
+            System.out.println("SERVER: appended!");
+            System.out.println(block);
+        }
     }
 
     private class ClientRpc extends ClientGrpc.ClientImplBase {
@@ -39,17 +86,7 @@ public class Server {
 
             int id = lastId.incrementAndGet();
 
-            currentBlock.append(new NewAccountTx(id), responseObserver);
-
-            var rspBuilder = CreateAccountRsp.newBuilder();
-            if (ledger.newAccount(id)) { //new account
-                rspBuilder.setId(id).setSuccess(true);
-                System.out.println("SERVER: Created ID:" + id);
-            }
-
-
-            responseObserver.onNext(rspBuilder.build());
-            responseObserver.onCompleted();
+            currentBlock.append(new NewAccountTx(id).setResponse(responseObserver));
         }
 
         @Override
@@ -58,12 +95,13 @@ public class Server {
             int accountId = request.getAccountId();
             System.out.println("SERVER: Delete account:" + accountId);
 
-            currentBlock.append(new DeleteAccountTx(accountId), responseObserver);
-
-            ledger.deleteAccount(accountId);
-
-            responseObserver.onNext(DeleteAccountRsp.getDefaultInstance());
-            responseObserver.onCompleted();
+            final var rLock = rwLock.readLock();
+            rLock.lock();
+            try {
+                currentBlock.append(new DeleteAccountTx(accountId).setResponse(responseObserver));
+            } finally {
+                rLock.unlock();
+            }
         }
 
         @Override
@@ -72,13 +110,13 @@ public class Server {
             int id     = request.getAccountId();
             System.out.println("SERVER: Account " + id + ", add " + amount);
 
-            currentBlock.append(new DepositTx(id, amount), responseObserver);
-
-            var rspBuilder = AddAmountRsp.newBuilder();
-            rspBuilder.setSuccess(ledger.add(id, amount));
-
-            responseObserver.onNext(rspBuilder.build());
-            responseObserver.onCompleted();
+            final var rLock = rwLock.readLock();
+            rLock.lock();
+            try {
+                currentBlock.append(new DepositTx(id, amount).setResponse(responseObserver));
+            } finally {
+                rLock.unlock();
+            }
         }
 
         @Override
@@ -106,15 +144,31 @@ public class Server {
             int to     = request.getToId();
             System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
 
-            currentBlock.append(new TransferTx(from, to, amount), responseObserver);
-
-            var rspBuilder = TransferRsp.newBuilder();
-            if (ledger.subtract(from, amount))
-                rspBuilder.setSuccess(ledger.add(to, amount));
-
-            responseObserver.onNext(rspBuilder.build());
-            responseObserver.onCompleted();
+            final var rLock = rwLock.readLock();
+            rLock.lock();
+            try {
+                currentBlock.append(new TransferTx(from, to, amount).setResponse(responseObserver));
+            } finally {
+                rLock.unlock();
+            }
         }
 
+    }
+
+    private class Appender implements Runnable {
+        @Override
+        public void run() {
+
+            while (!terminating.getAcquire()) {
+                trySealBlock();
+
+                try {
+                    Thread.sleep(blockTimeout);
+                } catch (InterruptedException ignored) {
+                }
+            }
+
+            trySealBlock();
+        }
     }
 }
