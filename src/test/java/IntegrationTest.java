@@ -1,5 +1,7 @@
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 // TODO: add tests for basic scenarios
@@ -18,7 +20,9 @@ class IntegrationTest {
     void basic() {
         final Server[] server = new Server[1];
         assertDoesNotThrow(() -> {
-            server[0] = new Server(PORT);
+            server[0] = new Server(PORT)
+                    .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
+                    .start();
         });
 
         var client1  = new Client(LOCALHOST, PORT);

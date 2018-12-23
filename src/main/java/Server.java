@@ -3,6 +3,7 @@ import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,14 +20,12 @@ public class Server {
     private final ReadWriteLock     rwLock       = new ReentrantReadWriteLock();
     private final AtomicBoolean     terminating  = new AtomicBoolean(false);
     private final io.grpc.Server    clientListener;
-    private final Thread            appender;
-    private       int               blockTimeout = 100;
+    private final Thread            appender     = new Thread(new Appender());
+    private       Duration          blockWindow  = java.time.Duration.ofSeconds(1);
     private       OpenedBlock       currentBlock = new OpenedBlock();
 
-    Server(int port) throws IOException {
-        appender = new Thread(new Appender());
-        appender.start();
-        clientListener = ServerBuilder.forPort(port).addService(new ClientRpc()).build().start();
+    Server(int port) {
+        clientListener = ServerBuilder.forPort(port).addService(new ClientRpc()).build();
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -34,6 +33,17 @@ public class Server {
         if (args.length >= 1) port = Integer.parseInt(args[0]);
         var server = new Server(port);
         server.awaitTermination();
+    }
+
+    Server setBlockWindow(Duration windowSize) {
+        blockWindow = windowSize;
+        return this;
+    }
+
+    Server start() throws IOException {
+        appender.start();
+        clientListener.start();
+        return this;
     }
 
     void awaitTermination() throws InterruptedException {
@@ -163,7 +173,7 @@ public class Server {
                 trySealBlock();
 
                 try {
-                    Thread.sleep(blockTimeout);
+                    Thread.sleep(blockWindow.toMillis());
                 } catch (InterruptedException ignored) {
                 }
             }
