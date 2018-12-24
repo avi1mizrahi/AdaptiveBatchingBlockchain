@@ -1,12 +1,14 @@
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 class Block {
     private final List<Transaction> txs;
 
-    Block(List<Transaction> txs) {
-        this.txs = txs;
+    Block(Collection<Transaction> txs) {
+        this.txs = Collections.unmodifiableList(List.copyOf(txs));
     }
 
     void apply(Ledger ledger) {
@@ -22,20 +24,37 @@ class Block {
 }
 
 class BlockBuilder {
-    private List<Transaction> txs = new ArrayList<>();
+    private ConcurrentLinkedQueue<Transaction> txs = new ConcurrentLinkedQueue<>();
+    ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
     boolean isEmpty() {
         return txs.isEmpty();
     }
 
     void append(Transaction tx) {
-        txs.add(tx);
+        final var readLock = readWriteLock.readLock();
+
+        readLock.lock();
+        try {
+            txs.add(tx);
+        } finally {
+            readLock.unlock();
+        }
+
     }
 
     Block seal() {
-        var block = new Block(txs);
-        txs = new ArrayList<>();
-        return block;
+        ConcurrentLinkedQueue<Transaction> newList = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<Transaction> oldList;
+
+        final var writeLock = readWriteLock.writeLock();
+
+        writeLock.lock();
+        oldList = txs;
+        txs = newList;
+        writeLock.unlock();
+
+        return new Block(oldList);
     }
 
 }

@@ -8,15 +8,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class Server {
     private final Ledger         ledger       = new Ledger();
     private final List<Block>    chain        = new ArrayList<>();
     private final AtomicInteger  lastId       = new AtomicInteger();
-    private final ReadWriteLock  rwLock       = new ReentrantReadWriteLock();
     private final AtomicBoolean  terminating  = new AtomicBoolean(false);
     private final io.grpc.Server clientListener;
     private final Thread         appender     = new Thread(new Appender());
@@ -62,24 +59,18 @@ public class Server {
     }
 
     private void trySealBlock() {
-        final var wLock = rwLock.writeLock();
-        Block     block = null;
-
-        wLock.lock();
-        try {
-            if (!blockBuilder.isEmpty()) {
-                block = blockBuilder.seal();
-            }
-        } finally {
-            wLock.unlock();
+        if (blockBuilder.isEmpty()) {
+            return;
         }
 
-        if (block != null) {
-            block.apply(ledger);
-            chain.add(block);
-            System.out.println("SERVER: appended!");
-            System.out.println(block);
-        }
+        Block block = blockBuilder.seal();
+
+        block.apply(ledger);
+        chain.add(block);
+
+        System.out.println("SERVER: appended!");
+        System.out.println(block);
+
     }
 
     private class ClientRpc extends ClientGrpc.ClientImplBase {
@@ -99,13 +90,7 @@ public class Server {
             int accountId = request.getAccountId();
             System.out.println("SERVER: Delete account:" + accountId);
 
-            final var rLock = rwLock.readLock();
-            rLock.lock();
-            try {
-                blockBuilder.append(new DeleteAccountTx(accountId).setResponse(responseObserver));
-            } finally {
-                rLock.unlock();
-            }
+            blockBuilder.append(new DeleteAccountTx(accountId).setResponse(responseObserver));
         }
 
         @Override
@@ -114,13 +99,7 @@ public class Server {
             int id     = request.getAccountId();
             System.out.println("SERVER: Account " + id + ", add " + amount);
 
-            final var rLock = rwLock.readLock();
-            rLock.lock();
-            try {
-                blockBuilder.append(new DepositTx(id, amount).setResponse(responseObserver));
-            } finally {
-                rLock.unlock();
-            }
+            blockBuilder.append(new DepositTx(id, amount).setResponse(responseObserver));
         }
 
         @Override
@@ -148,13 +127,7 @@ public class Server {
             int to     = request.getToId();
             System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
 
-            final var rLock = rwLock.readLock();
-            rLock.lock();
-            try {
-                blockBuilder.append(new TransferTx(from, to, amount).setResponse(responseObserver));
-            } finally {
-                rLock.unlock();
-            }
+            blockBuilder.append(new TransferTx(from, to, amount).setResponse(responseObserver));
         }
 
     }
