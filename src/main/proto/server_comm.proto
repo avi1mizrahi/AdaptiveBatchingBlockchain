@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package ServerCommunication;
+
+message Tx {
+    // TODO: take the definition from the client
+}
+
+message BlockId {
+    uint32 serverId     = 1;
+    uint32 serialNumber = 2;
+}
+
+message Block {
+    repeated Tx txs = 1;
+    BlockId     id  = 2;
+}
+
+
+message PushBlockReq {
+    Block block = 1;
+}
+
+message PushBlockRsp {
+    bool success = 1;
+}
+
+
+message PullBlockReq {
+    BlockId id = 1;
+}
+
+message PullBlockRsp {
+    bool  success   = 1;
+    Block block     = 2;
+}
+
+
+service Server {
+    rpc pushBlock (PushBlockRsp ) returns (PushBlockRsp) {}
+    rpc pullBlock (PullBlockReq ) returns (PullBlockRsp) {}
+}
+
