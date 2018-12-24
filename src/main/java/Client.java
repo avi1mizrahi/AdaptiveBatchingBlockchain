@@ -1,8 +1,10 @@
 import ClientServerCommunication.*;
+import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.concurrent.TimeUnit;
 
 
 public class Client {
@@ -10,11 +12,22 @@ public class Client {
 //       - write here a main-loop that will receive commands interactively
 
     private static ClientGrpc.ClientBlockingStub stub;
+    private final ManagedChannel channel;
 
     Client(String name, int port) {
-        stub = ClientGrpc.newBlockingStub(ManagedChannelBuilder.forAddress(name, port)
-                                                               .usePlaintext()
-                                                               .build());
+        channel = ManagedChannelBuilder.forAddress(name, port)
+                                       .usePlaintext()
+                                       .build();
+        stub = ClientGrpc.newBlockingStub(channel);
+    }
+
+    void shutdown() {
+        channel.shutdown();
+        try {
+            channel.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     Optional<Account> createAccount() {
