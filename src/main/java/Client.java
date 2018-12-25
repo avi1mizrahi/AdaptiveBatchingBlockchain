@@ -70,46 +70,46 @@ public class Client {
     }
 
     public static void main(String[] args) {
-        Client client;
+        String LOCALHOST = "localhost";
+        int    PORT      = 55555;
+
         if (args.length == 2) {
-            client = new Client(args[0], Integer.parseInt(args[1]));
-        } else {
-            String LOCALHOST = "localhost";
-            int PORT = 55555;
-            client = new Client(LOCALHOST, PORT);
+            LOCALHOST = args[0];
+            PORT      = Integer.parseInt(args[1]);
         }
+
+        var client = new Client(LOCALHOST, PORT);
+
         Scanner scanner = new Scanner(System.in);
         while (scanner.hasNextLine()) {
             String[] operation = scanner.nextLine().split(" ");
-//            try {
-                if (operation.length == 1 && operation[0].equals("shutdown")) {
-                    client.shutdown();
-                    break;
-                }
-                if (operation.length == 1 && operation[0].equals("createAccount")) {
-                    var account = client.createAccount().get();
-                    System.out.println(">>account id: " + account.getId());
-                }
-                if (operation.length == 2 && operation[0].equals("deleteAccount")) {
-                    client.deleteAccount(new Account(Integer.parseInt(operation[1])));
-                }
-                if (operation.length == 3 && operation[0].equals("addAmount")) {
-                    client.addAmount(new Account(Integer.parseInt(operation[1])),
-                            Integer.parseInt(operation[2]));
-                }
-                if (operation.length == 2 && operation[0].equals("getAmount")) {
-                    int amount = client.getAmount(new Account(Integer.parseInt(operation[1]))).getAsInt();
-                    System.out.println(">>amount: " + amount);
-                }
-                if (operation.length == 4 && operation[0].equals("transfer")) {
-                    client.transfer(new Account(Integer.parseInt(operation[1])),
-                            new Account(Integer.parseInt(operation[2])),
-                            Integer.parseInt(operation[3]));
-                }
-//            } catch (Exception exp) {
-//                // oops, something went wrong
-//                System.err.println("Parsing failed.  Reason: " + exp.getMessage());
-//            }
+            if (operation.length == 1 && operation[0].equals("shutdown")) {
+                client.shutdown();
+                break;
+            }
+            if (operation.length == 1 && operation[0].equals("createAccount")) {
+                var account = client.createAccount().get();
+                System.out.println(">>account id: " + account.getId());
+            }
+            if (operation.length == 2 && operation[0].equals("deleteAccount")) {
+                client.deleteAccount(new Account(Integer.parseInt(operation[1])));
+            }
+            if (operation.length == 3 && operation[0].equals("addAmount")) {
+                var success = client.addAmount(new Account(Integer.parseInt(operation[1])),
+                                               Integer.parseInt(operation[2]));
+                System.out.println(">>success=" + success);
+            }
+            if (operation.length == 2 && operation[0].equals("getAmount")) {
+                int amount = client.getAmount(new Account(Integer.parseInt(operation[1])))
+                                   .getAsInt();
+                System.out.println(">>amount: " + amount);
+            }
+            if (operation.length == 4 && operation[0].equals("transfer")) {
+                var success = client.transfer(new Account(Integer.parseInt(operation[1])),
+                                              new Account(Integer.parseInt(operation[2])),
+                                              Integer.parseInt(operation[3]));
+                System.out.println(">>success=" + success);
+            }
         }
     }
 
