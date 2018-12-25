@@ -5,11 +5,10 @@ import io.grpc.ManagedChannelBuilder;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.concurrent.TimeUnit;
+import java.util.Scanner;
 
 
 public class Client {
-// TODO: optional (I'm not sure if it's cost-effective):
-//       - write here a main-loop that will receive commands interactively
 
     private static ClientGrpc.ClientBlockingStub stub;
     private final ManagedChannel channel;
@@ -68,6 +67,50 @@ public class Client {
                                                 .setAmount(amount)
                                                 .build());
         return response.getSuccess();
+    }
+
+    public static void main(String[] args) {
+        Client client;
+        if (args.length == 2) {
+            client = new Client(args[0], Integer.parseInt(args[1]));
+        } else {
+            String LOCALHOST = "localhost";
+            int PORT = 55555;
+            client = new Client(LOCALHOST, PORT);
+        }
+        Scanner scanner = new Scanner(System.in);
+        while (scanner.hasNextLine()) {
+            String[] operation = scanner.nextLine().split(" ");
+//            try {
+                if (operation.length == 1 && operation[0].equals("shutdown")) {
+                    client.shutdown();
+                    break;
+                }
+                if (operation.length == 1 && operation[0].equals("createAccount")) {
+                    var account = client.createAccount().get();
+                    System.out.println(">>account id: " + account.getId());
+                }
+                if (operation.length == 2 && operation[0].equals("deleteAccount")) {
+                    client.deleteAccount(new Account(Integer.parseInt(operation[1])));
+                }
+                if (operation.length == 3 && operation[0].equals("addAmount")) {
+                    client.addAmount(new Account(Integer.parseInt(operation[1])),
+                            Integer.parseInt(operation[2]));
+                }
+                if (operation.length == 2 && operation[0].equals("getAmount")) {
+                    int amount = client.getAmount(new Account(Integer.parseInt(operation[1]))).getAsInt();
+                    System.out.println(">>amount: " + amount);
+                }
+                if (operation.length == 4 && operation[0].equals("transfer")) {
+                    client.transfer(new Account(Integer.parseInt(operation[1])),
+                            new Account(Integer.parseInt(operation[2])),
+                            Integer.parseInt(operation[3]));
+                }
+//            } catch (Exception exp) {
+//                // oops, something went wrong
+//                System.err.println("Parsing failed.  Reason: " + exp.getMessage());
+//            }
+        }
     }
 
     static class Account {
