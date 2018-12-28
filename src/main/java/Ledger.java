@@ -1,15 +1,13 @@
 import javax.annotation.Nullable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.HashMap;
 
 
 class Ledger {
-    // TODO: protect both with RW lock, here or outside (probably here)
-    private final ConcurrentHashMap<Account, Integer> data   = new ConcurrentHashMap<>();
-    private final AtomicInteger                       lastId = new AtomicInteger();
+    private final HashMap<Account, Integer> data          = new HashMap<>();
+    private       int                       lastId        = 0;
 
     Account newAccount() {
-        int id      = lastId.incrementAndGet();
+        int id      = ++lastId;
         var account = Account.from(id);
         var old     = data.put(account, 0);
         assert old == null;

@@ -9,9 +9,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class Server {
+    private final ReadWriteLock                        ledgerLock   = new ReentrantReadWriteLock();
     private final Ledger                               ledger       = new Ledger();
     private final List<Block>                          chain        = new ArrayList<>();
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
@@ -24,9 +27,12 @@ public class Server {
 
     Server(int clientPort, int serverPort, Duration blockWindow) {
         this.blockWindow = blockWindow;
-        //TODO: change server-server port
-        serverListener = io.grpc.ServerBuilder.forPort(serverPort).addService(new ServerRpc()).build();
-        clientListener = io.grpc.ServerBuilder.forPort(clientPort).addService(new ClientRpc()).build();
+        serverListener = io.grpc.ServerBuilder.forPort(serverPort)
+                                              .addService(new ServerRpc())
+                                              .build();
+        clientListener = io.grpc.ServerBuilder.forPort(clientPort)
+                                              .addService(new ClientRpc())
+                                              .build();
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -75,8 +81,14 @@ public class Server {
 
         Block block = blockBuilder.seal();
 
-        block.apply(ledger);
-        chain.add(block);
+        var writeLock = ledgerLock.writeLock();
+        writeLock.lock();
+        try {
+            block.apply(ledger);
+        } finally {
+            writeLock.unlock();
+            chain.add(block);
+        }
 
         System.out.println("SERVER: appended!");
         System.out.println(block);
@@ -143,7 +155,15 @@ public class Server {
             System.out.println("SERVER: getAmount " + account);
             var rspBuilder = GetAmountRsp.newBuilder();
 
-            var amount = ledger.get(account);
+            Integer amount;
+
+            ledgerLock.readLock().lock();
+            try {
+                amount = ledger.get(account);
+            } finally {
+                ledgerLock.readLock().unlock();
+            }
+
             if (amount != null) {
                 rspBuilder.setAmount(amount);
                 rspBuilder.setSuccess(true);
