@@ -4,8 +4,16 @@ option java_multiple_files = true;
 
 package ServerCommunication;
 
+import "client_server_comm.proto";
+
 message Tx {
-    // TODO: take the definition from the client
+    oneof txType {
+        ClientServerCommunication.CreateAccountReq  create      = 1;
+        ClientServerCommunication.DeleteAccountReq  delete      = 2;
+        ClientServerCommunication.AddAmountReq      addAmount   = 3;
+        ClientServerCommunication.GetAmountReq      getAmount   = 4;
+        ClientServerCommunication.TransferReq       transfer    = 5;
+    }
 }
 
 message BlockId {
@@ -13,14 +21,14 @@ message BlockId {
     uint32 serialNumber = 2;
 }
 
-message Block {
+message BlockMsg {
     repeated Tx txs = 1;
     BlockId     id  = 2;
 }
 
 
 message PushBlockReq {
-    Block block = 1;
+    BlockMsg block = 1;
 }
 
 message PushBlockRsp {
@@ -34,12 +42,12 @@ message PullBlockReq {
 
 message PullBlockRsp {
     bool  success   = 1;
-    Block block     = 2;
+    BlockMsg block     = 2;
 }
 
 
 service Server {
-    rpc pushBlock (PushBlockRsp ) returns (PushBlockRsp) {}
+    rpc pushBlock (PushBlockReq ) returns (PushBlockRsp) {}
     rpc pullBlock (PullBlockReq ) returns (PullBlockRsp) {}
 }
 

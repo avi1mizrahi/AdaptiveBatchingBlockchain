@@ -1,4 +1,5 @@
 import ClientServerCommunication.*;
+import ServerCommunication.*;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
@@ -6,6 +7,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -17,6 +19,7 @@ public class Server {
     private final Thread         appender     = new Thread(new Appender());
     private final Duration       blockWindow;
     private final BlockBuilder   blockBuilder = new BlockBuilder();
+    private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
 
     Server(int port, Duration blockWindow) {
         this.blockWindow = blockWindow;
@@ -69,6 +72,31 @@ public class Server {
         System.out.println("SERVER: appended!");
         System.out.println(block);
 
+    }
+
+    private class ServerRpc extends ServerGrpc.ServerImplBase {
+        @Override
+        public void pushBlock(PushBlockReq request, StreamObserver<PushBlockRsp> responseObserver) {
+            var block = request.getBlock();
+
+            pending.putIfAbsent(block.getId(), block);
+
+            responseObserver.onNext(PushBlockRsp.newBuilder().setSuccess(true).build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void pullBlock(PullBlockReq request, StreamObserver<PullBlockRsp> responseObserver) {
+            var block = pending.get(request.getId());
+
+            var builder = PullBlockRsp.newBuilder();
+            if (block != null) {
+                builder.setBlock(block).setSuccess(true);
+            }
+
+            responseObserver.onNext(builder.build());
+            responseObserver.onCompleted();
+        }
     }
 
     private class ClientRpc extends ClientGrpc.ClientImplBase {
