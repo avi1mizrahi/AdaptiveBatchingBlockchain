@@ -35,7 +35,7 @@ public class Client {
         if (!response.getSuccess()) {
             return Optional.empty();
         }
-        return Optional.of(new Account(response.getId()));
+        return Optional.of(Account.from(response.getId()));
     }
 
     void deleteAccount(Account account) {
@@ -92,32 +92,25 @@ public class Client {
                 System.out.println(">>account id: " + account.getId());
             }
             if (operation.length == 2 && operation[0].equals("deleteAccount")) {
-                client.deleteAccount(new Account(Integer.parseInt(operation[1])));
+                client.deleteAccount(Account.from(Integer.parseInt(operation[1])));
             }
             if (operation.length == 3 && operation[0].equals("addAmount")) {
-                var success = client.addAmount(new Account(Integer.parseInt(operation[1])),
+                var success = client.addAmount(Account.from(Integer.parseInt(operation[1])),
                                                Integer.parseInt(operation[2]));
                 System.out.println(">>success=" + success);
             }
             if (operation.length == 2 && operation[0].equals("getAmount")) {
-                int amount = client.getAmount(new Account(Integer.parseInt(operation[1])))
+                int amount = client.getAmount(Account.from(Integer.parseInt(operation[1])))
                                    .getAsInt();
                 System.out.println(">>amount: " + amount);
             }
             if (operation.length == 4 && operation[0].equals("transfer")) {
-                var success = client.transfer(new Account(Integer.parseInt(operation[1])),
-                                              new Account(Integer.parseInt(operation[2])),
+                var success = client.transfer(Account.from(Integer.parseInt(operation[1])),
+                                              Account.from(Integer.parseInt(operation[2])),
                                               Integer.parseInt(operation[3]));
                 System.out.println(">>success=" + success);
             }
         }
     }
 
-    static class Account {
-        private final int id;
-
-        Account(int id) {this.id = id;}
-
-        int getId() {return id;}
-    }
 }

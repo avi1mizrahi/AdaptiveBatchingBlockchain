@@ -120,32 +120,34 @@ public class Server {
         @Override
         public void deleteAccount(DeleteAccountReq request,
                                   StreamObserver<DeleteAccountRsp> responseObserver) {
-            int accountId = request.getAccountId();
-            System.out.println("SERVER: Delete account:" + accountId);
+            var account = Account.from(request.getAccountId());
 
-            blockBuilder.append(new DeleteAccountTx(accountId).setResponse(responseObserver));
+            System.out.println("SERVER: Delete " + account);
+
+            blockBuilder.append(new DeleteAccountTx(account).setResponse(responseObserver));
         }
 
         @Override
         public void addAmount(AddAmountReq request, StreamObserver<AddAmountRsp> responseObserver) {
-            int amount = request.getAmount();
-            int id     = request.getAccountId();
-            System.out.println("SERVER: Account " + id + ", add " + amount);
+            var amount  = request.getAmount();
+            var account = Account.from(request.getAccountId());
+            System.out.println("SERVER: " + account + ", add " + amount);
 
-            blockBuilder.append(new DepositTx(id, amount).setResponse(responseObserver));
+            blockBuilder.append(new DepositTx(account,
+                                              amount).setResponse(responseObserver));
         }
 
         @Override
         public void getAmount(GetAmountReq request, StreamObserver<GetAmountRsp> responseObserver) {
-            int id = request.getAccountId();
-            System.out.println("SERVER: getAmount " + id);
+            var account = Account.from(request.getAccountId());
+            System.out.println("SERVER: getAmount " + account);
             var rspBuilder = GetAmountRsp.newBuilder();
 
-            var amount = ledger.get(id);
+            var amount = ledger.get(account);
             if (amount != null) {
                 rspBuilder.setAmount(amount);
                 rspBuilder.setSuccess(true);
-                System.out.println("SERVER: Amount of " + id + " is " + amount);
+                System.out.println("SERVER: Amount of " + account + " is " + amount);
             }
 
             responseObserver.onNext(rspBuilder.build());
@@ -155,9 +157,9 @@ public class Server {
         @Override
         public void transfer(TransferReq request,
                              StreamObserver<TransferRsp> responseObserver) {
-            int amount = request.getAmount();
-            int from   = request.getFromId();
-            int to     = request.getToId();
+            var amount = request.getAmount();
+            var from   = Account.from(request.getFromId());
+            var to     = Account.from(request.getToId());
             System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
 
             blockBuilder.append(new TransferTx(from, to, amount).setResponse(responseObserver));

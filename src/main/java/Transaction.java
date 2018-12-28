@@ -27,18 +27,19 @@ abstract class Transaction {
 }
 
 class NewAccountTx extends Transaction {
-    NewAccountTx() {}
+    NewAccountTx() {
+    }
 
     @Override
     @SuppressWarnings("unchecked")
     void doYourThing(Ledger ledger) {
-        int id = ledger.newAccount();
+        var account = ledger.newAccount();
         if (response != null) {
             var rspBuilder = CreateAccountRsp.newBuilder();
-            rspBuilder.setId(id).setSuccess(true);
+            rspBuilder.setId(account.getId()).setSuccess(true);
             response.onNext(rspBuilder.build());
         }
-        System.out.println("SERVER: Created ID:" + id);
+        System.out.println("SERVER: Created " + account);
     }
 
     @Override
@@ -48,16 +49,16 @@ class NewAccountTx extends Transaction {
 }
 
 class DeleteAccountTx extends Transaction {
-    private final int id;
+    private final Account account;
 
-    DeleteAccountTx(int id) {
-        this.id = id;
+    DeleteAccountTx(Account account) {
+        this.account = account;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     void doYourThing(Ledger ledger) {
-        ledger.deleteAccount(id);
+        ledger.deleteAccount(account);
         if (response != null) {
             response.onNext(DeleteAccountRsp.getDefaultInstance());
         }
@@ -65,15 +66,15 @@ class DeleteAccountTx extends Transaction {
 
     @Override
     public String toString() {
-        return super.toString() + "Delete[" + id + "]";
+        return super.toString() + "Delete[" + account + "]";
     }
 }
 
 class DepositTx extends Transaction {
-    private final int account;
-    private final int amount;
+    private final Account account;
+    private final int     amount;
 
-    DepositTx(int account, int amount) {
+    DepositTx(Account account, int amount) {
         this.account = account;
         this.amount = amount;
     }
@@ -94,11 +95,11 @@ class DepositTx extends Transaction {
 }
 
 class TransferTx extends Transaction {
-    private final int from;
-    private final int to;
-    private final int amount;
+    private final Account from;
+    private final Account to;
+    private final int     amount;
 
-    TransferTx(int from, int to, int amount) {
+    TransferTx(Account from, Account to, int amount) {
         this.from = from;
         this.to = to;
         this.amount = amount;

@@ -5,34 +5,35 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 class Ledger {
     // TODO: protect both with RW lock, here or outside (probably here)
-    private final ConcurrentHashMap<Integer, Integer> data   = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Account, Integer> data   = new ConcurrentHashMap<>();
     private final AtomicInteger                       lastId = new AtomicInteger();
 
-    int newAccount() {
-        int id = lastId.incrementAndGet();
-        var old = data.put(id, 0);
+    Account newAccount() {
+        int id      = lastId.incrementAndGet();
+        var account = Account.from(id);
+        var old     = data.put(account, 0);
         assert old == null;
-        return id;
+        return account;
     }
 
-    boolean deleteAccount(int accountId) {
-        return null != data.remove(accountId);
+    boolean deleteAccount(Account account) {
+        return null != data.remove(account);
     }
 
-    boolean add(int accountId, int amount) {
+    boolean add(Account account, int amount) {
         if (amount < 0) return false;
-        return null != data.computeIfPresent(accountId,
+        return null != data.computeIfPresent(account,
                                              (id, currentAmount) ->
                                                      currentAmount + amount);
 
     }
 
-    boolean subtract(int accountId, int amount) {
+    boolean subtract(Account account, int amount) {
         var ref = new Object() {
             boolean executed = false;
         };
 
-        data.computeIfPresent(accountId, (id_, currentAmount) -> {
+        data.computeIfPresent(account, (id_, currentAmount) -> {
             var newAmount = currentAmount - amount;
             if (newAmount < 0) return currentAmount;
             ref.executed = true;
@@ -43,7 +44,7 @@ class Ledger {
     }
 
     @Nullable
-    Integer get(int accountId) {
-        return data.get(accountId);
+    Integer get(Account account) {
+        return data.get(account);
     }
 }
