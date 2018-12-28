@@ -3,12 +3,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 class Block {
     private final List<Transaction> txs;
 
-    Block(Collection<Transaction> txs) {
-        this.txs = Collections.unmodifiableList(List.copyOf(txs));
+    Block(Stream<Transaction> txs) {
+        this.txs = txs.collect(Collectors.toUnmodifiableList());
     }
 
     void apply(Ledger ledger) {
@@ -24,8 +25,8 @@ class Block {
 }
 
 class BlockBuilder {
-    private ConcurrentLinkedQueue<Transaction> txs = new ConcurrentLinkedQueue<>();
-    ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private ConcurrentLinkedQueue<Transaction> txs           = new ConcurrentLinkedQueue<>();
+    private ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
 
     boolean isEmpty() {
         return txs.isEmpty();
@@ -54,7 +55,7 @@ class BlockBuilder {
         txs = newList;
         writeLock.unlock();
 
-        return new Block(oldList);
+        return new Block(oldList.stream());
     }
 
 }

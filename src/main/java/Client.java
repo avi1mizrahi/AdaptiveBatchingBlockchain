@@ -10,7 +10,7 @@ import java.util.Scanner;
 
 public class Client {
 
-    private static ClientGrpc.ClientBlockingStub stub;
+    private final ClientGrpc.ClientBlockingStub stub;
     private final ManagedChannel channel;
 
     Client(String name, int port) {

@@ -29,6 +29,8 @@ abstract class Transaction {
 class NewAccountTx extends Transaction {
     private final int id;
 
+    // TODO: no need for ID here, decide the account value when chaining,
+    //       from the local ledger value (e.i. ledger tracks the account ids and generates new one)
     NewAccountTx(int id) {
         this.id = id;
     }
