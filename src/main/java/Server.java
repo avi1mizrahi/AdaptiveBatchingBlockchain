@@ -12,35 +12,43 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class Server {
-    private final Ledger         ledger       = new Ledger();
-    private final List<Block>    chain        = new ArrayList<>();
-    private final AtomicBoolean  terminating  = new AtomicBoolean(false);
-    private final io.grpc.Server clientListener;
-    private final Thread         appender     = new Thread(new Appender());
-    private final Duration       blockWindow;
-    private final BlockBuilder   blockBuilder = new BlockBuilder();
+    private final Ledger                               ledger       = new Ledger();
+    private final List<Block>                          chain        = new ArrayList<>();
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
+    private final AtomicBoolean                        terminating  = new AtomicBoolean(false);
+    private final Duration                             blockWindow;
+    private final BlockBuilder                         blockBuilder = new BlockBuilder();
+    private final Thread                               appender     = new Thread(new Appender());
+    private final io.grpc.Server                       serverListener;
+    private final io.grpc.Server                       clientListener;
 
-    Server(int port, Duration blockWindow) {
+    Server(int clientPort, int serverPort, Duration blockWindow) {
         this.blockWindow = blockWindow;
-        clientListener = io.grpc.ServerBuilder.forPort(port).addService(new ClientRpc()).build();
+        //TODO: change server-server port
+        serverListener = io.grpc.ServerBuilder.forPort(serverPort).addService(new ServerRpc()).build();
+        clientListener = io.grpc.ServerBuilder.forPort(clientPort).addService(new ClientRpc()).build();
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
         int port = 55555;
         if (args.length >= 1) port = Integer.parseInt(args[0]);
-        var server = new ServerBuilder().setPort(port).createServer().start();
+        var server = new ServerBuilder().setClientPort(port)
+                                        .setServerPort(port - 11111)
+                                        .createServer()
+                                        .start();
         server.awaitTermination();
     }
 
     Server start() throws IOException {
         appender.start();
+        serverListener.start();
         clientListener.start();
         return this;
     }
 
     void awaitTermination() throws InterruptedException {
         clientListener.awaitTermination();
+        serverListener.awaitTermination();
     }
 
     void shutdown() {
@@ -51,6 +59,7 @@ public class Server {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        serverListener.shutdown();
         System.out.println(chain.stream()
                                 .map(Objects::toString)
                                 .collect(Collectors.joining("\n",

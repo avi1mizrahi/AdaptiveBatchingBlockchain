@@ -16,21 +16,23 @@ import static org.junit.jupiter.api.Assertions.*;
 
 
 class IntegrationTest {
-    public static final int PORT = 55555;
+    public static final int CLIENT_PORT = 55555;
+    public static final int SERVER_PORT = 44444;
     public static final String LOCALHOST = "localhost";
 
     @Test
     void basic() {
         final Server[] server = new Server[1];
         assertDoesNotThrow(() -> {
-            server[0] = new ServerBuilder().setPort(PORT)
+            server[0] = new ServerBuilder().setClientPort(CLIENT_PORT)
+                                           .setServerPort(SERVER_PORT)
                                            .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
                                            .createServer()
                                            .start();
         });
 
-        var client1  = new Client(LOCALHOST, PORT);
-        var client2  = new Client(LOCALHOST, PORT);
+        var client1  = new Client(LOCALHOST, CLIENT_PORT);
+        var client2  = new Client(LOCALHOST, CLIENT_PORT);
         var account1 = client1.createAccount().get();
         var account2 = client1.createAccount().get();
         var account3 = client2.createAccount().get();
@@ -66,7 +68,8 @@ class IntegrationTest {
     void async_independent() {
         final Server[] server = new Server[1];
         assertDoesNotThrow(() -> {
-            server[0] = new ServerBuilder().setPort(PORT)
+            server[0] = new ServerBuilder().setClientPort(CLIENT_PORT)
+                                           .setServerPort(SERVER_PORT)
                                            .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
                                            .createServer()
                                            .start();
@@ -77,8 +80,8 @@ class IntegrationTest {
 
         for (int i = 0; i < 100; ++i) {
             threads.add(new Thread(() -> {
-                var client1  = new Client(LOCALHOST, PORT);
-                var client2  = new Client(LOCALHOST, PORT);
+                var client1  = new Client(LOCALHOST, CLIENT_PORT);
+                var client2  = new Client(LOCALHOST, CLIENT_PORT);
 
                 clients.add(client1);
                 clients.add(client2);
