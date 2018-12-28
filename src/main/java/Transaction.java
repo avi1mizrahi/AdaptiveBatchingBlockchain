@@ -27,31 +27,23 @@ abstract class Transaction {
 }
 
 class NewAccountTx extends Transaction {
-    private final int id;
-
-    // TODO: no need for ID here, decide the account value when chaining,
-    //       from the local ledger value (e.i. ledger tracks the account ids and generates new one)
-    NewAccountTx(int id) {
-        this.id = id;
-    }
+    NewAccountTx() {}
 
     @Override
     @SuppressWarnings("unchecked")
     void doYourThing(Ledger ledger) {
-        boolean success = ledger.newAccount(id);
+        int id = ledger.newAccount();
         if (response != null) {
             var rspBuilder = CreateAccountRsp.newBuilder();
-            if (success) {
-                rspBuilder.setId(id).setSuccess(true);
-            }
+            rspBuilder.setId(id).setSuccess(true);
             response.onNext(rspBuilder.build());
         }
-        System.out.println("SERVER: Created ID:" + id + "=" + success);
+        System.out.println("SERVER: Created ID:" + id);
     }
 
     @Override
     public String toString() {
-        return super.toString() + "New[" + id + "]";
+        return super.toString() + "New";
     }
 }
 

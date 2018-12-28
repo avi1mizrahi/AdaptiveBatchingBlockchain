@@ -7,18 +7,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class Server {
     private final Ledger         ledger       = new Ledger();
     private final List<Block>    chain        = new ArrayList<>();
-    private final AtomicInteger  lastId       = new AtomicInteger();
     private final AtomicBoolean  terminating  = new AtomicBoolean(false);
     private final io.grpc.Server clientListener;
     private final Thread         appender     = new Thread(new Appender());
-    private       Duration       blockWindow;
-    private       BlockBuilder   blockBuilder = new BlockBuilder();
+    private final Duration       blockWindow;
+    private final BlockBuilder   blockBuilder = new BlockBuilder();
 
     Server(int port, Duration blockWindow) {
         this.blockWindow = blockWindow;
@@ -79,9 +77,7 @@ public class Server {
                                   StreamObserver<CreateAccountRsp> responseObserver) {
             System.out.println("SERVER: Create account");
 
-            int id = lastId.incrementAndGet();
-
-            blockBuilder.append(new NewAccountTx(id).setResponse(responseObserver));
+            blockBuilder.append(new NewAccountTx().setResponse(responseObserver));
         }
 
         @Override
