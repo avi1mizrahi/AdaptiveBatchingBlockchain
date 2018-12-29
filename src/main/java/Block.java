@@ -1,4 +1,6 @@
-import java.util.*;
+import ServerCommunication.BlockMsg;
+
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -21,6 +23,15 @@ class Block {
         return txs.stream()
                   .map(Transaction::toString)
                   .collect(Collectors.joining("\n", "+++BLOCK+++\n", "\n---BLOCK---"));
+    }
+
+    static Block from(BlockMsg blockMsg) {
+        return new Block(blockMsg.getTxsList().stream().map(Transaction::from));
+    }
+
+    void addToBlockMsg(BlockMsg.Builder blockBuilder) {
+        var txMsgs = txs.stream().map(Transaction::toTxMsg).collect(Collectors.toList());
+        blockBuilder.addAllTxs(txMsgs);
     }
 }
 

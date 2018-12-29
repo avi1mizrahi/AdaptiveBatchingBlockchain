@@ -1,7 +1,5 @@
-import ClientServerCommunication.AddAmountRsp;
-import ClientServerCommunication.CreateAccountRsp;
-import ClientServerCommunication.DeleteAccountRsp;
-import ClientServerCommunication.TransferRsp;
+import ClientServerCommunication.*;
+import ServerCommunication.Tx;
 import io.grpc.stub.StreamObserver;
 
 abstract class Transaction {
@@ -19,6 +17,37 @@ abstract class Transaction {
     }
 
     abstract void doYourThing(Ledger ledger);
+
+    final Tx toTxMsg() {
+        var builder = Tx.newBuilder();
+        addToMsg(builder);
+        return builder.build();
+    }
+
+    abstract void addToMsg(Tx.Builder txBuilder);
+
+    // This is ugly
+    static Transaction from(Tx tx) {
+        switch (tx.getTxTypeCase()) {
+            case CREATE:
+                return new NewAccountTx();
+            case DELETE:
+                return new DeleteAccountTx(Account.from(tx.getDelete().getAccountId()));
+            case ADDAMOUNT:
+                var addTx = tx.getAddAmount();
+                return new DepositTx(Account.from(addTx.getAccountId()), addTx.getAmount());
+            case TRANSFER:
+                var transferTx = tx.getTransfer();
+                return new TransferTx(Account.from(transferTx.getFromId()),
+                                       Account.from(transferTx.getToId()),
+                                       transferTx.getAmount());
+            case GETAMOUNT:
+            case TXTYPE_NOT_SET:
+                assert false;
+        }
+
+        return null;
+    }
 
     @Override
     public String toString() {
@@ -43,6 +72,11 @@ class NewAccountTx extends Transaction {
     }
 
     @Override
+    void addToMsg(Tx.Builder txBuilder) {
+        txBuilder.setCreate(CreateAccountReq.getDefaultInstance());
+    }
+
+    @Override
     public String toString() {
         return super.toString() + "New";
     }
@@ -62,6 +96,11 @@ class DeleteAccountTx extends Transaction {
         if (response != null) {
             response.onNext(DeleteAccountRsp.getDefaultInstance());
         }
+    }
+
+    @Override
+    void addToMsg(Tx.Builder txBuilder) {
+        txBuilder.getDeleteBuilder().setAccountId(account.getId());
     }
 
     @Override
@@ -89,6 +128,11 @@ class DepositTx extends Transaction {
     }
 
     @Override
+    void addToMsg(Tx.Builder txBuilder) {
+        txBuilder.getAddAmountBuilder().setAccountId(account.getId()).setAmount(amount);
+    }
+
+    @Override
     public String toString() {
         return super.toString() + "Deposit[" + account + "]+" + amount;
     }
@@ -112,6 +156,14 @@ class TransferTx extends Transaction {
         if (response != null) {
             response.onNext(TransferRsp.newBuilder().setSuccess(success).build());
         }
+    }
+
+    @Override
+    void addToMsg(Tx.Builder txBuilder) {
+        txBuilder.getTransferBuilder()
+                 .setFromId(from.getId())
+                 .setToId(to.getId())
+                 .setAmount(amount);
     }
 
     private boolean transfer(Ledger ledger) {
