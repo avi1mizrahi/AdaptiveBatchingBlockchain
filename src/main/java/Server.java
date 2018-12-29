@@ -81,14 +81,18 @@ public class Server {
 
         Block block = blockBuilder.seal();
 
+        // TODO: this part should be done:
+        //  1. after consensus
+        //  2. for each pending block that was agreed
         var writeLock = ledgerLock.writeLock();
         writeLock.lock();
         try {
             block.apply(ledger);
+            chain.add(block);
         } finally {
             writeLock.unlock();
-            chain.add(block);
         }
+
 
         System.out.println("SERVER: appended!");
         System.out.println(block);
