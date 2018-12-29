@@ -5,7 +5,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 // TODO: add tests for basic scenarios
 //
@@ -24,7 +25,8 @@ class IntegrationTest {
     void basic() {
         final Server[] server = new Server[1];
         assertDoesNotThrow(() -> {
-            server[0] = new ServerBuilder().setClientPort(CLIENT_PORT)
+            server[0] = new ServerBuilder().setId(1)
+                                           .setClientPort(CLIENT_PORT)
                                            .setServerPort(SERVER_PORT)
                                            .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
                                            .createServer()
@@ -68,7 +70,8 @@ class IntegrationTest {
     void async_independent() {
         final Server[] server = new Server[1];
         assertDoesNotThrow(() -> {
-            server[0] = new ServerBuilder().setClientPort(CLIENT_PORT)
+            server[0] = new ServerBuilder().setId(1)
+                                           .setClientPort(CLIENT_PORT)
                                            .setServerPort(SERVER_PORT)
                                            .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
                                            .createServer()

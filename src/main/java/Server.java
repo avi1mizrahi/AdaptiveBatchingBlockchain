@@ -14,6 +14,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class Server {
+    private final int                                  id;
     private final ReadWriteLock                        ledgerLock   = new ReentrantReadWriteLock();
     private final Ledger                               ledger       = new Ledger();
     private final List<Block>                          chain        = new ArrayList<>();
@@ -25,7 +26,8 @@ public class Server {
     private final io.grpc.Server                       serverListener;
     private final io.grpc.Server                       clientListener;
 
-    Server(int clientPort, int serverPort, Duration blockWindow) {
+    public Server(int id, int clientPort, int serverPort, Duration blockWindow) {
+        this.id = id;
         this.blockWindow = blockWindow;
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())

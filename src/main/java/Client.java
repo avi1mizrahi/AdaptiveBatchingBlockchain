@@ -4,8 +4,8 @@ import io.grpc.ManagedChannelBuilder;
 
 import java.util.Optional;
 import java.util.OptionalInt;
-import java.util.concurrent.TimeUnit;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 
 
 public class Client {
