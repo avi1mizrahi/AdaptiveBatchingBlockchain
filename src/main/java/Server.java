@@ -13,8 +13,10 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+
 public class Server {
     private final int                                  id;
+    private       int                                  myBlockNum   = 0;
     private final ReadWriteLock                        ledgerLock   = new ReentrantReadWriteLock();
     private final Ledger                               ledger       = new Ledger();
     private final List<Block>                          chain        = new ArrayList<>();
@@ -76,16 +78,7 @@ public class Server {
         assert blockBuilder.isEmpty();
     }
 
-    private void trySealBlock() {
-        if (blockBuilder.isEmpty()) {
-            return;
-        }
-
-        Block block = blockBuilder.seal();
-
-        // TODO: this part should be done:
-        //  1. after consensus
-        //  2. for each pending block that was agreed
+    private void chainBlock(Block block) {
         var writeLock = ledgerLock.writeLock();
         writeLock.lock();
         try {
@@ -94,7 +87,40 @@ public class Server {
         } finally {
             writeLock.unlock();
         }
+    }
 
+    // TODO: this should be done for each pending block that was agreed
+    private void onBlockChained(BlockId blockId) {
+        var blockMsg = pending.remove(blockId);
+        if (blockMsg == null) {
+            // TODO: pull missing block from others
+            assert false;//TODO remove
+        }
+
+        chainBlock(Block.from(blockMsg));
+    }
+
+    private void pushBlock(Block block) {
+        var blockMsgBuilder = BlockMsg.newBuilder();
+        block.addToBlockMsg(blockMsgBuilder);
+
+        blockMsgBuilder.getIdBuilder().setServerId(id).setSerialNumber(myBlockNum++);
+
+        BlockMsg blockMsg = blockMsgBuilder.build();
+        //TODO: send this to others
+        //TODO: wait for more than half
+    }
+
+    private void trySealBlock() {
+        if (blockBuilder.isEmpty()) {
+            return;
+        }
+
+        Block block = blockBuilder.seal();
+
+        pushBlock(block);
+        // TODO: add to chain, ZK consensus
+        chainBlock(block);
 
         System.out.println("SERVER: appended!");
         System.out.println(block);
