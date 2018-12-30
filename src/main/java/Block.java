@@ -1,5 +1,6 @@
 import ServerCommunication.BlockMsg;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -14,7 +15,7 @@ class Block {
         this.txs = txs.collect(Collectors.toUnmodifiableList());
     }
 
-    void apply(Ledger ledger) {
+    void applyTo(Ledger ledger) {
         txs.forEach(transaction -> transaction.process(ledger));
     }
 
@@ -35,6 +36,7 @@ class Block {
     }
 }
 
+@ThreadSafe
 class BlockBuilder {
     private ConcurrentLinkedQueue<Transaction> txs           = new ConcurrentLinkedQueue<>();
     private ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
@@ -44,13 +46,8 @@ class BlockBuilder {
     }
 
     void append(Transaction tx) {
-        final var readLock = readWriteLock.readLock();
-
-        readLock.lock();
-        try {
+        try (var ignored = CriticalSection.start(readWriteLock.readLock())) {
             txs.add(tx);
-        } finally {
-            readLock.unlock();
         }
 
     }
@@ -59,12 +56,10 @@ class BlockBuilder {
         ConcurrentLinkedQueue<Transaction> newList = new ConcurrentLinkedQueue<>();
         ConcurrentLinkedQueue<Transaction> oldList;
 
-        final var writeLock = readWriteLock.writeLock();
-
-        writeLock.lock();
-        oldList = txs;
-        txs = newList;
-        writeLock.unlock();
+        try (var ignored = CriticalSection.start(readWriteLock.writeLock())) {
+            oldList = txs;
+            txs = newList;
+        }
 
         return new Block(oldList.stream());
     }

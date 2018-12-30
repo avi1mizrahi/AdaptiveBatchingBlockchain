@@ -4,22 +4,14 @@ import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 
 public class Server {
     private final int                                  id;
     private       int                                  myBlockNum   = 0;
-    private final ReadWriteLock                        ledgerLock   = new ReentrantReadWriteLock();
     private final Ledger                               ledger       = new Ledger();
-    private final List<Block>                          chain        = new ArrayList<>();
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
     private final AtomicBoolean                        terminating  = new AtomicBoolean(false);
     private final Duration                             blockWindow;
@@ -70,23 +62,7 @@ public class Server {
             e.printStackTrace();
         }
         serverListener.shutdown();
-        System.out.println(chain.stream()
-                                .map(Objects::toString)
-                                .collect(Collectors.joining("\n",
-                                                            "=== CHAIN AT EXIT: ===\n",
-                                                            "\n")));
         assert blockBuilder.isEmpty();
-    }
-
-    private void chainBlock(Block block) {
-        var writeLock = ledgerLock.writeLock();
-        writeLock.lock();
-        try {
-            block.apply(ledger);
-            chain.add(block);
-        } finally {
-            writeLock.unlock();
-        }
     }
 
     // TODO: this should be done for each pending block that was agreed
@@ -97,7 +73,7 @@ public class Server {
             assert false;//TODO remove
         }
 
-        chainBlock(Block.from(blockMsg));
+        ledger.apply(Block.from(blockMsg));
     }
 
     private void pushBlock(Block block) {
@@ -120,8 +96,7 @@ public class Server {
 
         pushBlock(block);
         // TODO: add to chain, ZK consensus
-        chainBlock(block);
-
+        ledger.apply(block);
         System.out.println("SERVER: appended!");
         System.out.println(block);
 
@@ -187,14 +162,7 @@ public class Server {
             System.out.println("SERVER: getAmount " + account);
             var rspBuilder = GetAmountRsp.newBuilder();
 
-            Integer amount;
-
-            ledgerLock.readLock().lock();
-            try {
-                amount = ledger.get(account);
-            } finally {
-                ledgerLock.readLock().unlock();
-            }
+            Integer amount = ledger.get(account);
 
             if (amount != null) {
                 rspBuilder.setAmount(amount);
