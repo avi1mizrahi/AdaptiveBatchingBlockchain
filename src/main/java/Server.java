@@ -4,6 +4,8 @@ import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -12,6 +14,7 @@ public class Server {
     private final int                                  id;
     private       int                                  myBlockNum   = 0;
     private final Ledger                               ledger       = new Ledger();
+    // TODO: add concurrentSet<ServerID> crashedservers
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
     private final AtomicBoolean                        terminating  = new AtomicBoolean(false);
     private final Duration                             blockWindow;
@@ -65,6 +68,24 @@ public class Server {
         assert blockBuilder.isEmpty();
     }
 
+    private void cleanUpServerBlocks(int serverId /* TODO: server can be identified either by id or by host:port*/) {
+        // TODO: synchronize with ZK to find the latest block chained by this server.
+        //  this can by done once for all disconnected servers
+        int latestBlock = Integer.MAX_VALUE - 1; // TODO replace with the above real value
+
+        // TODO: first mark this server as down
+        //  crashedservers.add
+
+        List<BlockId> toBeDeleted = new ArrayList<>();
+        pending.forEachKey(1024, blockId -> {
+            if (blockId.getServerId() == serverId && blockId.getSerialNumber() > latestBlock) {
+                toBeDeleted.add(blockId);
+            }
+        });
+
+        toBeDeleted.forEach(pending::remove);
+    }
+
     // TODO: this should be done for each pending block that was agreed
     private void onBlockChained(BlockId blockId) {
         var blockMsg = pending.remove(blockId);
@@ -106,7 +127,8 @@ public class Server {
         @Override
         public void pushBlock(PushBlockReq request, StreamObserver<PushBlockRsp> responseObserver) {
             var block = request.getBlock();
-
+            // TODO: if the sending server is down, don't put
+            //  if server is in crashedservers
             pending.putIfAbsent(block.getId(), block);
 
             responseObserver.onNext(PushBlockRsp.newBuilder().setSuccess(true).build());
@@ -191,7 +213,7 @@ public class Server {
         @Override
         public void run() {
 
-            while (!terminating.getAcquire()) {
+            while (!terminating.getAcquire()) { // must use acquire semantics, as long as we don't lock inside block.isEmpty()
                 trySealBlock();
 
                 try {
