@@ -7,25 +7,22 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 
 public class Server {
+    private final BatchingStrategy                     batchingStrategy;
     private final int                                  id;
     private       int                                  myBlockNum   = 0;
     private final Ledger                               ledger       = new Ledger();
     // TODO: add concurrentSet<ServerID> crashedservers
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
-    private final AtomicBoolean                        terminating  = new AtomicBoolean(false);
-    private final Duration                             blockWindow;
     private final BlockBuilder                         blockBuilder = new BlockBuilder();
-    private final Thread                               appender     = new Thread(new Appender());
     private final io.grpc.Server                       serverListener;
     private final io.grpc.Server                       clientListener;
 
     public Server(int id, int clientPort, int serverPort, Duration blockWindow) {
         this.id = id;
-        this.blockWindow = blockWindow;
+        batchingStrategy = new FixedWindowBatching(this::trySealBlock, blockWindow);
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
                                               .build();
@@ -45,7 +42,7 @@ public class Server {
     }
 
     Server start() throws IOException {
-        appender.start();
+        batchingStrategy.start();
         serverListener.start();
         clientListener.start();
         return this;
@@ -57,13 +54,8 @@ public class Server {
     }
 
     void shutdown() {
-        terminating.setRelease(true);
+        batchingStrategy.stop();
         clientListener.shutdown();
-        try {
-            appender.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         serverListener.shutdown();
         assert blockBuilder.isEmpty();
     }
@@ -153,29 +145,39 @@ public class Server {
         @Override
         public void createAccount(CreateAccountReq request,
                                   StreamObserver<CreateAccountRsp> responseObserver) {
-            System.out.println("SERVER: Create account");
+            batchingStrategy.onRequestBegin();
 
+            System.out.println("SERVER: Create account");
             blockBuilder.append(new NewAccountTx().setResponse(responseObserver));
+
+            batchingStrategy.onRequestEnd();
         }
 
         @Override
         public void deleteAccount(DeleteAccountReq request,
                                   StreamObserver<DeleteAccountRsp> responseObserver) {
-            var account = Account.from(request.getAccountId());
+            batchingStrategy.onRequestBegin();
 
+            var account = Account.from(request.getAccountId());
             System.out.println("SERVER: Delete " + account);
 
             blockBuilder.append(new DeleteAccountTx(account).setResponse(responseObserver));
+
+            batchingStrategy.onRequestEnd();
         }
 
         @Override
         public void addAmount(AddAmountReq request, StreamObserver<AddAmountRsp> responseObserver) {
+            batchingStrategy.onRequestBegin();
+
             var amount  = request.getAmount();
             var account = Account.from(request.getAccountId());
             System.out.println("SERVER: " + account + ", add " + amount);
 
             blockBuilder.append(new DepositTx(account,
                                               amount).setResponse(responseObserver));
+
+            batchingStrategy.onRequestEnd();
         }
 
         @Override
@@ -199,30 +201,17 @@ public class Server {
         @Override
         public void transfer(TransferReq request,
                              StreamObserver<TransferRsp> responseObserver) {
+            batchingStrategy.onRequestBegin();
+
             var amount = request.getAmount();
             var from   = Account.from(request.getFromId());
             var to     = Account.from(request.getToId());
             System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
 
             blockBuilder.append(new TransferTx(from, to, amount).setResponse(responseObserver));
+
+            batchingStrategy.onRequestEnd();
         }
 
-    }
-
-    private class Appender implements Runnable {
-        @Override
-        public void run() {
-
-            while (!terminating.getAcquire()) { // must use acquire semantics, as long as we don't lock inside block.isEmpty()
-                trySealBlock();
-
-                try {
-                    Thread.sleep(blockWindow.toMillis());
-                } catch (InterruptedException ignored) {
-                }
-            }
-
-            trySealBlock();
-        }
     }
 }
