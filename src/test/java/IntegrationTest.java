@@ -28,7 +28,7 @@ class IntegrationTest {
             server[0] = new ServerBuilder().setId(1)
                                            .setClientPort(CLIENT_PORT)
                                            .setServerPort(SERVER_PORT)
-                                           .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
+                                           .setBlockWindow(Duration.ofMillis(30)) // TODO: 30 is just to accelerate the tests, don't know what is "good value"
                                            .createServer()
                                            .start();
         });
@@ -73,7 +73,7 @@ class IntegrationTest {
             server[0] = new ServerBuilder().setId(1)
                                            .setClientPort(CLIENT_PORT)
                                            .setServerPort(SERVER_PORT)
-                                           .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
+                                           .setBlockWindow(Duration.ofMillis(30)) // TODO: 30 is just to accelerate the tests, don't know what is "good value"
                                            .createServer()
                                            .start();
         });

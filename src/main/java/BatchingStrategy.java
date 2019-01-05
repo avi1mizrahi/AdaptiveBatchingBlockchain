@@ -23,21 +23,39 @@ abstract class BatchingStrategy {
     abstract void stop();
 }
 
-class FixedWindowBatching extends BatchingStrategy {
-    private final AtomicBoolean terminating = new AtomicBoolean(false);
+class TimedAdaptiveBatching extends BatchingStrategy {
+    private final AtomicBoolean terminating    = new AtomicBoolean(false);
+    private final AtomicBoolean isVisited      = new AtomicBoolean(false);
     private final Thread        appender;
+    private       int           skippedWindows = 0;
 
-    FixedWindowBatching(Runnable doBatch, Duration blockWindow) {
+    @Override
+    void onRequestEnd() {
+        isVisited.setRelease(true);
+    }
+
+    TimedAdaptiveBatching(Runnable doBatch, Duration blockWindow) {
+        this(doBatch, blockWindow, 5);
+    }
+
+    TimedAdaptiveBatching(Runnable doBatch, Duration blockWindow, int windowsLimit) {
         super(doBatch);
 
         appender = new Thread(() -> {
             while (!terminating.getAcquire()) { // must use acquire semantics, as long as we don't lock inside block.isEmpty()
-                batch();
-
                 try {
                     Thread.sleep(blockWindow.toMillis());
                 } catch (InterruptedException ignored) {
                 }
+
+                boolean isVisited = this.isVisited.getAndSet(false);
+
+                if (isVisited && ++skippedWindows < windowsLimit) {
+                    continue;
+                }
+
+                skippedWindows = 0;
+                batch();
             }
 
             batch();
@@ -60,3 +78,12 @@ class FixedWindowBatching extends BatchingStrategy {
         }
     }
 }
+
+class FixedWindowBatching extends TimedAdaptiveBatching {
+
+    FixedWindowBatching(Runnable doBatch, Duration blockWindow) {
+        super(doBatch, blockWindow, 1);
+    }
+}
+
+

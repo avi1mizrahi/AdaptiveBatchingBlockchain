@@ -22,7 +22,7 @@ public class Server {
 
     public Server(int id, int clientPort, int serverPort, Duration blockWindow) {
         this.id = id;
-        batchingStrategy = new FixedWindowBatching(this::trySealBlock, blockWindow);
+        batchingStrategy = new TimedAdaptiveBatching(this::trySealBlock, blockWindow);
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
                                               .build();
