@@ -23,7 +23,9 @@ class Block {
     public String toString() {
         return txs.stream()
                   .map(Transaction::toString)
-                  .collect(Collectors.joining("\n", "+++BLOCK+++\n", "\n---BLOCK---"));
+                  .collect(Collectors.joining("\n",
+                                              "+++BLOCK+++ [size=" + txs.size() + "]\n",
+                                              "\n---BLOCK---"));
     }
 
     static Block from(BlockMsg blockMsg) {
