@@ -20,13 +20,13 @@ public class Server {
     private final io.grpc.Server                       serverListener;
     private final io.grpc.Server                       clientListener;
 
-    private final String           hostname   = "localhost";
-    private       int              myBlockNum = 0;
-    private       int              clientPort;
-    private       int              serverPort;
-    private       ZooKeeperClient  zkClient;
+    private final ZooKeeperClient  zkClient;
     final         String           zkAddress  = "127.0.0.1:2181";
-    private       List<PeerServer> serversView;
+    private final String           hostname   = "localhost";
+    private final int              clientPort;
+    private final int              serverPort;
+    private final List<PeerServer> serversView;
+    private       int              myBlockNum = 0;
 
     Server(int id, int clientPort, int serverPort, Duration blockWindow) {
         this.id = id;

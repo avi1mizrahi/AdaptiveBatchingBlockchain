@@ -40,8 +40,8 @@ class Block {
 
 @ThreadSafe
 class BlockBuilder {
-    private ConcurrentLinkedQueue<Transaction> txs           = new ConcurrentLinkedQueue<>();
-    private ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
+    private       ConcurrentLinkedQueue<Transaction> txs           = new ConcurrentLinkedQueue<>();
 
     boolean isEmpty() {
         return txs.isEmpty();

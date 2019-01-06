@@ -38,9 +38,13 @@ public class Client {
                 client.shutdown();
                 break;
             }
+            final Runnable printFailed = () -> System.out.println(">>OPERATION FAILED");
+
             if (operation.length == 1 && operation[0].equals("createAccount")) {
-                var account = client.createAccount().get();
-                System.out.println(">>account id: " + account.getId());
+                client.createAccount()
+                      .ifPresentOrElse(account -> System.out.println
+                                               (">>account id: " + account.getId()),
+                                       printFailed);
             }
             if (operation.length == 2 && operation[0].equals("deleteAccount")) {
                 client.deleteAccount(Account.from(Integer.parseInt(operation[1])));
@@ -51,9 +55,9 @@ public class Client {
                 System.out.println(">>success=" + success);
             }
             if (operation.length == 2 && operation[0].equals("getAmount")) {
-                int amount = client.getAmount(Account.from(Integer.parseInt(operation[1])))
-                                   .getAsInt();
-                System.out.println(">>amount: " + amount);
+                client.getAmount(Account.from(Integer.parseInt(operation[1])))
+                      .ifPresentOrElse(amount -> System.out.println(">>amount: " + amount),
+                                       printFailed);
             }
             if (operation.length == 4 && operation[0].equals("transfer")) {
                 var success = client.transfer(Account.from(Integer.parseInt(operation[1])),

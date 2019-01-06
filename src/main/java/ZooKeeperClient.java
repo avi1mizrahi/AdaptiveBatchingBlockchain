@@ -15,8 +15,8 @@ public class ZooKeeperClient implements Watcher {
     private static final String    blockchainRootPath = "/Blockchain";
     private static final String    membershipRootPath = "/Membership";
     private final        String    membershipPath;
+    private final        Server    server;
     private              ZooKeeper zk;
-    private              Server    server;
     private              Integer   lastSeenBlock      = 0;
 
 
@@ -99,7 +99,7 @@ public class ZooKeeperClient implements Watcher {
             e1.printStackTrace();
             try {
                 Thread.sleep(3);
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignored) {
 
             }
         }
@@ -141,7 +141,7 @@ public class ZooKeeperClient implements Watcher {
                 e1.printStackTrace();
                 try {
                     Thread.sleep(3);
-                } catch (InterruptedException e) {
+                } catch (InterruptedException ignored) {
                 }
             }
             server.onMembershipChange(serversView);
@@ -177,7 +177,7 @@ public class ZooKeeperClient implements Watcher {
                 e1.printStackTrace();
                 try {
                     Thread.sleep(3);
-                } catch (InterruptedException e) {
+                } catch (InterruptedException ignored) {
                 }
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
