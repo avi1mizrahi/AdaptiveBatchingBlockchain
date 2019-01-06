@@ -122,26 +122,29 @@ public class Server {
         ledger.apply(Block.from(blockMsg));
     }
 
-    private void pushBlock(Block block) {
+    private BlockId pushBlock(Block block) {
         var blockMsgBuilder = BlockMsg.newBuilder();
         block.addToBlockMsg(blockMsgBuilder);
 
-        blockMsgBuilder.getIdBuilder().setServerId(id).setSerialNumber(myBlockNum++);
+        var blockId = BlockId.newBuilder().setServerId(id)
+                                          .setSerialNumber(myBlockNum++)
+                                          .build();
+        blockMsgBuilder.setId(blockId);
 
         BlockMsg blockMsg = blockMsgBuilder.build();
         //TODO: send this to others
         //TODO: wait for more than half
+
+        return blockId;
     }
 
     private void trySealBlock() {
         if (blockBuilder.isEmpty()) {
             return;
         }
-
         Block block = blockBuilder.seal();
-
-        pushBlock(block);
-        // TODO: add to chain, ZK consensus
+        var blockId = pushBlock(block);
+        zkClient.postBlock(blockId);
         ledger.apply(block);
         System.out.println("SERVER: appended!");
         System.out.println(block);

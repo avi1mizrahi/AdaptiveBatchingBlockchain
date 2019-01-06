@@ -13,7 +13,7 @@ import java.util.Set;
 public class ZooKeeperClient implements Watcher {
 
     private static final String blockchainRootPath = "/Blockchain";
-    private static String membershipRootPath = "/Membership";
+    private static final String membershipRootPath = "/Membership";
     private ZooKeeper zk;
     private Server server;
     private final String membershipPath;
@@ -141,8 +141,9 @@ public class ZooKeeperClient implements Watcher {
                 for (String child : children) {
                     Integer blockId = Integer.parseInt(child);
                     String blockPath = blockchainRootPath + "/" + child;
-                    while (blockId > lastSeenBlock) {
+                    if (blockId > lastSeenBlock) {
                         server.onBlockChained(BlockId.parseFrom(getData(blockPath).getBytes()));
+                        lastSeenBlock = Integer.parseInt(child);
                     }
                 }
             } catch (KeeperException | InterruptedException e1) {
