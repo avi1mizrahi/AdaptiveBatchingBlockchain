@@ -24,7 +24,6 @@ abstract class BatchingStrategy {
 }
 
 class TimedAdaptiveBatching extends BatchingStrategy {
-    private final AtomicBoolean terminating    = new AtomicBoolean(false);
     private final AtomicBoolean isVisited      = new AtomicBoolean(false);
     private final Thread        appender;
     private       int           skippedWindows = 0;
@@ -42,10 +41,11 @@ class TimedAdaptiveBatching extends BatchingStrategy {
         super(doBatch);
 
         appender = new Thread(() -> {
-            while (!terminating.getAcquire()) { // must use acquire semantics, as long as we don't lock inside block.isEmpty()
+            while (!Thread.interrupted()) {
                 try {
                     Thread.sleep(blockWindow.toMillis());
                 } catch (InterruptedException ignored) {
+                    break;
                 }
 
                 boolean isVisited = this.isVisited.getAndSet(false);
@@ -57,8 +57,6 @@ class TimedAdaptiveBatching extends BatchingStrategy {
                 skippedWindows = 0;
                 batch();
             }
-
-            batch();
         });
     }
 
@@ -69,7 +67,7 @@ class TimedAdaptiveBatching extends BatchingStrategy {
 
     @Override
     void shutdown() {
-        terminating.setRelease(true);
+        appender.interrupt();
 
         try {
             appender.join();
