@@ -81,7 +81,7 @@ class IntegrationTest {
         var threads = new ArrayList<Thread>();
         var clients = new ConcurrentSet<Client>();
 
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 200; ++i) {
             threads.add(new Thread(() -> {
                 var client1  = new Client(LOCALHOST, CLIENT_PORT);
                 var client2  = new Client(LOCALHOST, CLIENT_PORT);
@@ -113,7 +113,7 @@ class IntegrationTest {
 
                 int value1 = 150;
 
-                for (int j = 0; j < 30; ++j) {
+                for (int j = 0; j < 10; ++j) {
                     client1.addAmount(account1, 20);
                     client2.addAmount(account1, 20);
                     value1 += 40;

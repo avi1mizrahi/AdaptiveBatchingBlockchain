@@ -20,7 +20,7 @@ abstract class BatchingStrategy {
 
     abstract void start();
 
-    abstract void stop();
+    abstract void shutdown();
 }
 
 class TimedAdaptiveBatching extends BatchingStrategy {
@@ -68,7 +68,7 @@ class TimedAdaptiveBatching extends BatchingStrategy {
     }
 
     @Override
-    void stop() {
+    void shutdown() {
         terminating.setRelease(true);
 
         try {

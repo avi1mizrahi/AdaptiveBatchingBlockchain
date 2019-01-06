@@ -67,7 +67,7 @@ public class Server {
     }
 
     void shutdown() {
-        batchingStrategy.stop();
+        batchingStrategy.shutdown();
         clientListener.shutdown();
         serverListener.shutdown();
         assert blockBuilder.isEmpty();
