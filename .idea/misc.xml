@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="MavenCompilerTasksManager">
-    <option name="beforeCompileTasks">
+    <option name="beforeRebuildTask">
       <set>
         <MavenCompilerTask>
           <option name="goal" value="org.xolstice.maven.plugins:protobuf-maven-plugin:0.5.1:compile" />
