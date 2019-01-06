@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -20,24 +21,36 @@ public class Server {
     private final io.grpc.Server                       serverListener;
     private final io.grpc.Server                       clientListener;
 
-    public Server(int id, int clientPort, int serverPort, Duration blockWindow) {
+    private final String                               hostname     = "localhost";
+    private       int                                  clientPort;
+    private       int                                  serverPort;
+    final         String                               zkAddress = "127.0.0.1:2181";
+    private       ZooKeeperClient                      zkClient;
+    private       List<PeerServer>                     serversView;
+
+    Server(int id, int clientPort, int serverPort, Duration blockWindow) {
         this.id = id;
         batchingStrategy = new TimedAdaptiveBatching(this::trySealBlock, blockWindow);
+        this.clientPort = clientPort;
+        this.serverPort = serverPort;
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
                                               .build();
         clientListener = io.grpc.ServerBuilder.forPort(clientPort)
                                               .addService(new ClientRpc())
                                               .build();
+        zkClient = new ZooKeeperClient(this);
+        serversView = new ArrayList<>();
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
         int port = 55555;
         if (args.length >= 1) port = Integer.parseInt(args[0]);
-        var server = new ServerBuilder().setClientPort(port)
-                                        .setServerPort(port - 11111)
-                                        .createServer()
-                                        .start();
+        Server server = new ServerBuilder().setId(1)
+                                           .setClientPort(port)
+                                           .setServerPort(port - 11111)
+                                           .createServer()
+                                           .start();
         server.awaitTermination();
     }
 
@@ -58,6 +71,26 @@ public class Server {
         clientListener.shutdown();
         serverListener.shutdown();
         assert blockBuilder.isEmpty();
+    }
+
+    void onMembershipChange(Set<Integer> newView) {
+        for (PeerServer peerServer : serversView) {
+            if (!newView.contains(peerServer.getServerId())) {
+                peerServer.shutdown();
+            }
+        }
+        for (Integer serverId : newView) {
+//            boolean inOldView = false;
+            for (PeerServer peerServer : serversView) {
+                if (peerServer.getServerId() == serverId) {
+//                    inOldView = true;
+                    break;
+                }
+                // serverId not in old view
+                String[] serverData = zkClient.getServerMembershipData(serverId);
+                serversView.add(new PeerServer(serverId, serverData[0], Integer.parseInt(serverData[1])));
+            }
+        }
     }
 
     private void cleanUpServerBlocks(int serverId /* TODO: server can be identified either by id or by host:port*/) {
@@ -212,6 +245,21 @@ public class Server {
 
             batchingStrategy.onRequestEnd();
         }
+    }
 
+    int getId() {
+        return id;
+    }
+
+    String getHostname() {
+        return hostname;
+    }
+
+    int getClientPort() {
+        return clientPort;
+    }
+
+    int getServerPort() {
+        return serverPort;
     }
 }
