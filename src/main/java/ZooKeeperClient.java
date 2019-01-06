@@ -12,6 +12,7 @@ import java.util.Set;
 
 public class ZooKeeperClient implements Watcher {
 
+    private final        String    zkAddress          = "127.0.0.1:2181";
     private static final String    blockchainRootPath = "/Blockchain";
     private static final String    membershipRootPath = "/Membership";
     private final        String    membershipPath;
@@ -22,7 +23,7 @@ public class ZooKeeperClient implements Watcher {
     ZooKeeperClient(Server server) {
         this.server = server;
         membershipPath = membershipRootPath + "/" + server.getId();
-        System.out.println(server.zkAddress);
+        System.out.println(zkAddress);
         try {
             this.zk = createZooKeeper();
         } catch (IOException e1) {
@@ -223,7 +224,7 @@ public class ZooKeeperClient implements Watcher {
     }
 
     private ZooKeeper createZooKeeper() throws IOException {
-        return new ZooKeeper(server.zkAddress, 3000, this);
+        return new ZooKeeper(zkAddress, 3000, this);
     }
 
 }

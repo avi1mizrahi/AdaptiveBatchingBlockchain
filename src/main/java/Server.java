@@ -21,7 +21,6 @@ public class Server {
     private final io.grpc.Server                       clientListener;
 
     private final ZooKeeperClient  zkClient;
-    final         String           zkAddress  = "127.0.0.1:2181";
     private final String           hostname   = "localhost";
     private final int              clientPort;
     private final int              serverPort;
