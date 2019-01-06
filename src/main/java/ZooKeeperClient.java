@@ -19,13 +19,12 @@ public class ZooKeeperClient implements Watcher {
     private              ZooKeeper zk;
     private              Integer   lastSeenBlock      = 0;
 
-
     ZooKeeperClient(Server server) {
         this.server = server;
         membershipPath = membershipRootPath + "/" + server.getId();
+        System.out.println(server.zkAddress);
         try {
-            System.out.println(server.zkAddress);
-            this.zk = new ZooKeeper(server.zkAddress, 3000, this);
+            this.zk = createZooKeeper();
         } catch (IOException e1) {
             // TODO: need to think what to do if there is an error here
             e1.printStackTrace();
@@ -49,6 +48,13 @@ public class ZooKeeperClient implements Watcher {
         }
         ZooKeeperClient zookeeperClient = new ZooKeeperClient(server);
 
+    }
+
+    public void shutdown() {
+        try {
+            zk.close();
+        } catch (InterruptedException ignored) {
+        }
     }
 
     private void init() {
@@ -195,7 +201,7 @@ public class ZooKeeperClient implements Watcher {
                     break;
                 case Expired:
                     try {
-                        this.zk = new ZooKeeper(server.zkAddress, 3000, this);
+                        zk = createZooKeeper();
                     } catch (IOException e1) {
                         e1.printStackTrace();
                     }
@@ -214,6 +220,10 @@ public class ZooKeeperClient implements Watcher {
         } else {
             System.out.println("Watcher called with event type " + event.getType());
         }
+    }
+
+    private ZooKeeper createZooKeeper() throws IOException {
+        return new ZooKeeper(server.zkAddress, 3000, this);
     }
 
 }

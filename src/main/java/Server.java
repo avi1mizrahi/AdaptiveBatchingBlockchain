@@ -67,6 +67,7 @@ public class Server {
     }
 
     void shutdown() {
+        zkClient.shutdown();
         batchingStrategy.shutdown();
         clientListener.shutdown();
         serverListener.shutdown();
