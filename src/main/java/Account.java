@@ -20,9 +20,7 @@ class Account {
 
     @Override
     public boolean equals(Object obj) {
-        return obj != null
-                && Account.class.isAssignableFrom(obj.getClass())
-                && ((Account) obj).id == id;
+        return obj instanceof Account && ((Account) obj).id == id;
     }
 
     @Override

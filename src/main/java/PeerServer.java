@@ -2,6 +2,7 @@ import ServerCommunication.ServerGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
+import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 class PeerServer {
@@ -9,9 +10,9 @@ class PeerServer {
     private final ServerGrpc.ServerFutureStub stub;
     private final ManagedChannel              channel;
 
-    PeerServer(int serverId, String name, int port) {
+    PeerServer(int serverId, InetSocketAddress address) {
         this.serverId = serverId;
-        channel = ManagedChannelBuilder.forAddress(name, port)
+        channel = ManagedChannelBuilder.forAddress(address.getHostName(), address.getPort())
                                        .usePlaintext()
                                        .build();
         stub = ServerGrpc.newFutureStub(channel);

@@ -4,6 +4,7 @@ import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
@@ -113,13 +114,10 @@ public class ZooKeeperClient implements Watcher {
         return "";
     }
 
-    private String[] getServerData(String data) {
-        return data.split("::");
-    }
-
-    String[] getServerMembershipData(Integer serverId) {
-        String memberPath = membershipRootPath + "/" + serverId;
-        return getServerData(getData(memberPath));
+    InetSocketAddress getServerMembershipData(Integer serverId) {
+        String   memberPath = membershipRootPath + "/" + serverId;
+        String[] data       = getData(memberPath).split("::");
+        return InetSocketAddress.createUnresolved(data[0], Integer.parseInt(data[1]));
     }
 
     public void updateServerMembershipNode() {
