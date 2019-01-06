@@ -159,7 +159,7 @@ public class ZooKeeperClient implements Watcher {
             zk.create(blockchainRootPath,
                       blockId.toByteArray(),
                       ZooDefs.Ids.OPEN_ACL_UNSAFE,
-                      CreateMode.EPHEMERAL_SEQUENTIAL);
+                      CreateMode.PERSISTENT_SEQUENTIAL);
         } catch (KeeperException | InterruptedException e) {
             e.printStackTrace();
         }
