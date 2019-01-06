@@ -112,7 +112,7 @@ public class Server {
     }
 
     // TODO: this should be done for each pending block that was agreed
-    private void onBlockChained(BlockId blockId) {
+    void onBlockChained(BlockId blockId) {
         var blockMsg = pending.remove(blockId);
         if (blockMsg == null) {
             // TODO: pull missing block from others
