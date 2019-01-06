@@ -4,10 +4,10 @@ import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class Server {
@@ -15,17 +15,17 @@ public class Server {
     private final int                                  id;
     private final Ledger                               ledger       = new Ledger();
     // TODO: add concurrentSet<ServerID> crashedservers
+    private final Map<Integer, PeerServer>             peers        = new HashMap<>();
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
     private final BlockBuilder                         blockBuilder = new BlockBuilder();
     private final io.grpc.Server                       serverListener;
     private final io.grpc.Server                       clientListener;
 
-    private final ZooKeeperClient  zkClient;
-    private final String           hostname   = "localhost";
-    private final int              clientPort;
-    private final int              serverPort;
-    private final List<PeerServer> serversView;
-    private       int              myBlockNum = 0;
+    private final ZooKeeperClient zkClient;
+    private final String          hostname   = "localhost";
+    private final int             clientPort;
+    private final int             serverPort;
+    private       int             myBlockNum = 0;
 
     Server(int id, int clientPort, int serverPort, Duration blockWindow) {
         this.id = id;
@@ -39,7 +39,6 @@ public class Server {
                                               .addService(new ClientRpc())
                                               .build();
         zkClient = new ZooKeeperClient(this);
-        serversView = new ArrayList<>();
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -74,28 +73,32 @@ public class Server {
     }
 
     void onMembershipChange(Set<Integer> newView) {
-        for (PeerServer peerServer : serversView) {
-            if (!newView.contains(peerServer.getServerId())) {
-                peerServer.shutdown();
-            }
+        // clean up removed peers
+        List<Integer> removedPeersIds = peers.keySet()
+                                             .stream()
+                                             .flatMap(peerId -> {
+                                                 if (newView.contains(peerId))
+                                                     return Stream.empty();
+                                                 return Stream.of(peerId);
+                                             }).collect(Collectors.toList());
+
+        for (Integer peerId : removedPeersIds) {
+            final PeerServer peer = peers.remove(peerId);
+            peer.shutdown();
+            cleanUpServerBlocks(peerId);
         }
+
+        // add new peers
         for (Integer serverId : newView) {
-//            boolean inOldView = false;
-            for (PeerServer peerServer : serversView) {
-                if (peerServer.getServerId() == serverId) {
-//                    inOldView = true;
-                    break;
-                }
-                // serverId not in old view
-                String[] serverData = zkClient.getServerMembershipData(serverId);
-                serversView.add(new PeerServer(serverId,
-                                               serverData[0],
-                                               Integer.parseInt(serverData[1])));
-            }
+            peers.computeIfAbsent(serverId, this::createPeerServer);
         }
     }
 
-    private void cleanUpServerBlocks(int serverId /* TODO: server can be identified either by id or by host:port*/) {
+    private PeerServer createPeerServer(Integer serverId) {
+        return new PeerServer(serverId, zkClient.getServerMembershipData(serverId));
+    }
+
+    private void cleanUpServerBlocks(int serverId) {
         // TODO: synchronize with ZK to find the latest block chained by this server.
         //  this can by done once for all disconnected servers
         int latestBlock = Integer.MAX_VALUE - 1; // TODO replace with the above real value
