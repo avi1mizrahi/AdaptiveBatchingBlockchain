@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.LongAdder;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,9 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 class IntegrationTest {
-    public static final int CLIENT_PORT = 55555;
-    public static final int SERVER_PORT = 44444;
-    public static final String LOCALHOST = "localhost";
+    public static final int    CLIENT_PORT = 55555;
+    public static final int    SERVER_PORT = 44444;
+    public static final String LOCALHOST   = "localhost";
 
     @Test
     void basic() {
@@ -78,13 +79,15 @@ class IntegrationTest {
                                            .start();
         });
 
-        var threads = new ArrayList<Thread>();
-        var clients = new ConcurrentSet<Client>();
+        final var       threads  = new ArrayList<Thread>();
+        final var       clients  = new ConcurrentSet<Client>();
+        final LongAdder finished = new LongAdder();
+        final int       nThreads = 200;
 
-        for (int i = 0; i < 200; ++i) {
+        for (int i = 0; i < nThreads; ++i) {
             threads.add(new Thread(() -> {
-                var client1  = new Client(LOCALHOST, CLIENT_PORT);
-                var client2  = new Client(LOCALHOST, CLIENT_PORT);
+                var client1 = new Client(LOCALHOST, CLIENT_PORT);
+                var client2 = new Client(LOCALHOST, CLIENT_PORT);
 
                 clients.add(client1);
                 clients.add(client2);
@@ -124,6 +127,8 @@ class IntegrationTest {
                 client2.deleteAccount(account2);
                 client1.deleteAccount(account3);
                 client2.deleteAccount(account4);
+
+                finished.increment();
             }));
         }
 
@@ -136,6 +141,8 @@ class IntegrationTest {
                 assert false;
             }
         });
+
+        assertEquals(nThreads, finished.sum());
 
         clients.forEach(Client::shutdown);
 
