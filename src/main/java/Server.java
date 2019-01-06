@@ -13,7 +13,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Server {
     private final BatchingStrategy                     batchingStrategy;
     private final int                                  id;
-    private       int                                  myBlockNum   = 0;
     private final Ledger                               ledger       = new Ledger();
     // TODO: add concurrentSet<ServerID> crashedservers
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
@@ -21,12 +20,13 @@ public class Server {
     private final io.grpc.Server                       serverListener;
     private final io.grpc.Server                       clientListener;
 
-    private final String                               hostname     = "localhost";
-    private       int                                  clientPort;
-    private       int                                  serverPort;
-    final         String                               zkAddress = "127.0.0.1:2181";
-    private       ZooKeeperClient                      zkClient;
-    private       List<PeerServer>                     serversView;
+    private final String           hostname   = "localhost";
+    private       int              myBlockNum = 0;
+    private       int              clientPort;
+    private       int              serverPort;
+    private       ZooKeeperClient  zkClient;
+    final         String           zkAddress  = "127.0.0.1:2181";
+    private       List<PeerServer> serversView;
 
     Server(int id, int clientPort, int serverPort, Duration blockWindow) {
         this.id = id;
@@ -88,7 +88,9 @@ public class Server {
                 }
                 // serverId not in old view
                 String[] serverData = zkClient.getServerMembershipData(serverId);
-                serversView.add(new PeerServer(serverId, serverData[0], Integer.parseInt(serverData[1])));
+                serversView.add(new PeerServer(serverId,
+                                               serverData[0],
+                                               Integer.parseInt(serverData[1])));
             }
         }
     }
@@ -114,10 +116,7 @@ public class Server {
     // TODO: this should be done for each pending block that was agreed
     void onBlockChained(BlockId blockId) {
         var blockMsg = pending.remove(blockId);
-        if (blockMsg == null) {
-            // TODO: pull missing block from others
-            assert false;//TODO remove
-        }
+        assert blockMsg != null;//TODO remove
 
         ledger.apply(Block.from(blockMsg));
     }
@@ -126,9 +125,10 @@ public class Server {
         var blockMsgBuilder = BlockMsg.newBuilder();
         block.addToBlockMsg(blockMsgBuilder);
 
-        var blockId = BlockId.newBuilder().setServerId(id)
-                                          .setSerialNumber(myBlockNum++)
-                                          .build();
+        var blockId = BlockId.newBuilder()
+                             .setServerId(id)
+                             .setSerialNumber(myBlockNum++)
+                             .build();
         blockMsgBuilder.setId(blockId);
 
         BlockMsg blockMsg = blockMsgBuilder.build();
@@ -142,13 +142,29 @@ public class Server {
         if (blockBuilder.isEmpty()) {
             return;
         }
-        Block block = blockBuilder.seal();
-        var blockId = pushBlock(block);
+        Block block   = blockBuilder.seal();
+        var   blockId = pushBlock(block);
         zkClient.postBlock(blockId);
         ledger.apply(block);
         System.out.println("SERVER: appended!");
         System.out.println(block);
 
+    }
+
+    int getId() {
+        return id;
+    }
+
+    String getHostname() {
+        return hostname;
+    }
+
+    int getClientPort() {
+        return clientPort;
+    }
+
+    int getServerPort() {
+        return serverPort;
     }
 
     private class ServerRpc extends ServerGrpc.ServerImplBase {
@@ -248,21 +264,5 @@ public class Server {
 
             batchingStrategy.onRequestEnd();
         }
-    }
-
-    int getId() {
-        return id;
-    }
-
-    String getHostname() {
-        return hostname;
-    }
-
-    int getClientPort() {
-        return clientPort;
-    }
-
-    int getServerPort() {
-        return serverPort;
     }
 }

@@ -1,10 +1,10 @@
 import java.time.Duration;
 
 public class ServerBuilder {
-    private int      clientPort = -1;
-    private int      serverPort = -1;
+    private int      clientPort  = -1;
+    private int      serverPort  = -1;
     private Duration blockWindow = Duration.ofSeconds(1);
-    private int      id = -1;
+    private int      id          = -1;
 
     public ServerBuilder setId(int id) {
         this.id = id;

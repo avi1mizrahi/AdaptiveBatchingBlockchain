@@ -1,12 +1,13 @@
 import ServerCommunication.ServerGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+
 import java.util.concurrent.TimeUnit;
 
 class PeerServer {
-    private final int serverId;
+    private final int                         serverId;
     private final ServerGrpc.ServerFutureStub stub;
-    private final ManagedChannel channel;
+    private final ManagedChannel              channel;
 
     PeerServer(int serverId, String name, int port) {
         this.serverId = serverId;

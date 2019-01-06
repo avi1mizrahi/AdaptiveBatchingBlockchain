@@ -28,11 +28,6 @@ class TimedAdaptiveBatching extends BatchingStrategy {
     private final Thread        appender;
     private       int           skippedWindows = 0;
 
-    @Override
-    void onRequestEnd() {
-        isVisited.setRelease(true);
-    }
-
     TimedAdaptiveBatching(Runnable doBatch, Duration blockWindow) {
         this(doBatch, blockWindow, 5);
     }
@@ -58,6 +53,11 @@ class TimedAdaptiveBatching extends BatchingStrategy {
                 batch();
             }
         });
+    }
+
+    @Override
+    void onRequestEnd() {
+        isVisited.setRelease(true);
     }
 
     @Override

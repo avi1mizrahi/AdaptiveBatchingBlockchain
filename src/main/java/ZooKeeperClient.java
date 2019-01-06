@@ -1,7 +1,7 @@
+import ServerCommunication.BlockId;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
-import ServerCommunication.*;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -12,12 +12,12 @@ import java.util.Set;
 
 public class ZooKeeperClient implements Watcher {
 
-    private static final String blockchainRootPath = "/Blockchain";
-    private static final String membershipRootPath = "/Membership";
-    private ZooKeeper zk;
-    private Server server;
-    private final String membershipPath;
-    private Integer lastSeenBlock = 0;
+    private static final String    blockchainRootPath = "/Blockchain";
+    private static final String    membershipRootPath = "/Membership";
+    private final        String    membershipPath;
+    private              ZooKeeper zk;
+    private              Server    server;
+    private              Integer   lastSeenBlock      = 0;
 
 
     ZooKeeperClient(Server server) {
@@ -30,6 +30,25 @@ public class ZooKeeperClient implements Watcher {
             // TODO: need to think what to do if there is an error here
             e1.printStackTrace();
         }
+    }
+
+    public static void main(String[] args) throws IOException {
+        int    CLIENT_PORT = 55555;
+        int    SERVER_PORT = 44444;
+        String LOCALHOST   = "localhost";
+        Server server = new ServerBuilder().setId(1)
+                                           .setClientPort(CLIENT_PORT)
+                                           .setServerPort(SERVER_PORT)
+                                           .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
+                                           .createServer()
+                                           .start();
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        ZooKeeperClient zookeeperClient = new ZooKeeperClient(server);
+
     }
 
     private void init() {
@@ -53,7 +72,10 @@ public class ZooKeeperClient implements Watcher {
 
         // Try to create the znode of this sever under /membership.
         try {
-            zk.create(membershipPath, getMembershipData(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+            zk.create(membershipPath,
+                      getMembershipData(),
+                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                      CreateMode.EPHEMERAL_SEQUENTIAL);
         } catch (KeeperException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -68,7 +90,7 @@ public class ZooKeeperClient implements Watcher {
     }
 
     private String getData(String path) {
-        Stat stat = new Stat();
+        Stat   stat = new Stat();
         byte[] dataBytes;
         try {
             dataBytes = zk.getData(path, false, stat);
@@ -95,7 +117,9 @@ public class ZooKeeperClient implements Watcher {
 
     public void updateServerMembershipNode() {
         try {
-            zk.setData(membershipPath, getMembershipData(), zk.exists(membershipPath, false).getVersion());
+            zk.setData(membershipPath,
+                       getMembershipData(),
+                       zk.exists(membershipPath, false).getVersion());
         } catch (KeeperException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -127,7 +151,10 @@ public class ZooKeeperClient implements Watcher {
     void postBlock(BlockId blockId) {
         // Try to create the znode of this sever under /membership.
         try {
-            zk.create(blockchainRootPath, blockId.toByteArray(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+            zk.create(blockchainRootPath,
+                      blockId.toByteArray(),
+                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                      CreateMode.EPHEMERAL_SEQUENTIAL);
         } catch (KeeperException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -139,8 +166,8 @@ public class ZooKeeperClient implements Watcher {
                 List<String> children;
                 children = zk.getChildren(blockchainRootPath, this);
                 for (String child : children) {
-                    Integer blockId = Integer.parseInt(child);
-                    String blockPath = blockchainRootPath + "/" + child;
+                    Integer blockId   = Integer.parseInt(child);
+                    String  blockPath = blockchainRootPath + "/" + child;
                     if (blockId > lastSeenBlock) {
                         server.onBlockChained(BlockId.parseFrom(getData(blockPath).getBytes()));
                         lastSeenBlock = Integer.parseInt(child);
@@ -175,38 +202,18 @@ public class ZooKeeperClient implements Watcher {
                 default:
                     break;
             }
-        }
-        else if (event.getType() == Event.EventType.NodeChildrenChanged) {
-            System.out.println("Watcher called with event type " + event.getType() + " on znode " + event.getPath());
+        } else if (event.getType() == Event.EventType.NodeChildrenChanged) {
+            System.out.println("Watcher called with event type " + event.getType() + " on znode " +
+                                       event.getPath());
             if (event.getPath().equals(membershipRootPath)) {
                 updateMembership();
             }
             if (event.getPath().equals(blockchainRootPath)) {
                 updateBlockchain();
             }
-        }
-        else {
+        } else {
             System.out.println("Watcher called with event type " + event.getType());
         }
-    }
-
-    public static void main(String[] args) throws IOException {
-        int CLIENT_PORT = 55555;
-        int SERVER_PORT = 44444;
-        String LOCALHOST = "localhost";
-        Server server = new ServerBuilder().setId(1)
-                                           .setClientPort(CLIENT_PORT)
-                                           .setServerPort(SERVER_PORT)
-                                           .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
-                                           .createServer()
-                                           .start();
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        ZooKeeperClient zookeeperClient = new ZooKeeperClient(server);
-
     }
 
 }

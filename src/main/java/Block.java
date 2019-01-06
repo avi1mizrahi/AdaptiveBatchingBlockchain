@@ -15,6 +15,10 @@ class Block {
         this.txs = txs.collect(Collectors.toUnmodifiableList());
     }
 
+    static Block from(BlockMsg blockMsg) {
+        return new Block(blockMsg.getTxsList().stream().map(Transaction::from));
+    }
+
     void applyTo(Ledger ledger) {
         txs.forEach(transaction -> transaction.process(ledger));
     }
@@ -26,10 +30,6 @@ class Block {
                   .collect(Collectors.joining("\n",
                                               "+++BLOCK+++ [size=" + txs.size() + "]\n",
                                               "\n---BLOCK---"));
-    }
-
-    static Block from(BlockMsg blockMsg) {
-        return new Block(blockMsg.getTxsList().stream().map(Transaction::from));
     }
 
     void addToBlockMsg(BlockMsg.Builder blockBuilder) {
