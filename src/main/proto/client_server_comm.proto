@@ -1,4 +1,4 @@
-syntax = "proto3";
+syntax = "proto2";
 
 option java_multiple_files = true;
 
@@ -8,43 +8,43 @@ package ClientServerCommunication;
 message CreateAccountReq {
 }
 message CreateAccountRsp {
-    bool    success = 1;
-    uint32  id      = 2;
+    required bool    success = 1;
+    required uint32  id      = 2;
 }
 
 
 message DeleteAccountReq {
-    uint32 accountId = 2;
+    required uint32 accountId = 2;
 }
 message DeleteAccountRsp {
 }
 
 
 message AddAmountReq {
-    uint32 accountId = 2;
-    uint32 amount    = 3;
+    required uint32 accountId = 2;
+    required uint32 amount    = 3;
 }
 message AddAmountRsp {
-    bool success = 1;
+    required bool success = 1;
 }
 
 
 message GetAmountReq {
-    uint32 accountId = 2;
+    required uint32 accountId = 2;
 }
 message GetAmountRsp {
-    bool    success = 1;
-    uint32  amount  = 3;
+    required bool    success = 1;
+    required uint32  amount  = 3;
 }
 
 
 message TransferReq {
-    uint32 fromId   = 1;
-    uint32 toId     = 2;
-    uint32 amount   = 3;
+    required uint32 fromId   = 1;
+    required uint32 toId     = 2;
+    required uint32 amount   = 3;
 }
 message TransferRsp {
-    bool success = 1;
+    required bool success = 1;
 }
 
 
