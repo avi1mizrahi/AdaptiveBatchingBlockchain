@@ -90,12 +90,9 @@ public class Server {
 
         // add new peers
         for (Integer serverId : newView) {
-            peers.computeIfAbsent(serverId, this::createPeerServer);
+            peers.computeIfAbsent(serverId,
+                                  id -> new PeerServer(zkClient.getServerMembershipData(id)));
         }
-    }
-
-    private PeerServer createPeerServer(Integer serverId) {
-        return new PeerServer(serverId, zkClient.getServerMembershipData(serverId));
     }
 
     private void cleanUpServerBlocks(int serverId) {

@@ -6,12 +6,10 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 class PeerServer {
-    private final int                         serverId;
     private final ServerGrpc.ServerFutureStub stub;
     private final ManagedChannel              channel;
 
-    PeerServer(int serverId, InetSocketAddress address) {
-        this.serverId = serverId;
+    PeerServer(InetSocketAddress address) {
         channel = ManagedChannelBuilder.forAddress(address.getHostName(), address.getPort())
                                        .usePlaintext()
                                        .build();
@@ -25,9 +23,5 @@ class PeerServer {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
-
-    int getServerId() {
-        return serverId;
     }
 }
