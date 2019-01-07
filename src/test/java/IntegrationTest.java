@@ -1,4 +1,3 @@
-import Blockchain.Client;
 import Blockchain.Server;
 import Blockchain.ServerBuilder;
 import io.grpc.netty.shaded.io.netty.util.internal.ConcurrentSet;
@@ -80,7 +79,7 @@ class IntegrationTest {
         });
 
         final var       threads  = new ArrayList<Thread>();
-        final var       clients  = new ConcurrentSet<Client>();
+//        final var       clients  = new ConcurrentSet<Client>();
         final LongAdder finished = new LongAdder();
         final int       nThreads = 200;
 

@@ -1,6 +1,6 @@
 package Blockchain;
 
-import ClientServerCommunication.CreateAccountReq;
+import ServerCommunication.CreateAccountReq;
 import ServerCommunication.Tx;
 
 abstract class Transaction {
