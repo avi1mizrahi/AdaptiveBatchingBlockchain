@@ -2,6 +2,9 @@ import ServerCommunication.BlockId;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -13,7 +16,9 @@ import java.util.Set;
 
 public class ZooKeeperClient implements Watcher {
 
-    private final        String    zkAddress          = "127.0.0.1:2181";
+    private final InetSocketAddress zkAddress = InetSocketAddress.createUnresolved("127.0.0.1",
+                                                                                   2181);
+
     private static final String    blockchainRootPath = "/Blockchain";
     private static final String    membershipRootPath = "/Membership";
     private final        String    membershipPath;
@@ -21,7 +26,7 @@ public class ZooKeeperClient implements Watcher {
     private              ZooKeeper zk;
     private              Integer   lastSeenBlock      = 0;
 
-    ZooKeeperClient(Server server) {
+    ZooKeeperClient(@NotNull Server server) {
         this.server = server;
         membershipPath = membershipRootPath + "/" + server.getId();
         System.out.println(zkAddress);
@@ -92,11 +97,13 @@ public class ZooKeeperClient implements Watcher {
         updateBlockchain();
     }
 
+    @NotNull
     private byte[] getMembershipData() {
         String data = server.getHostname() + "::" + server.getServerPort();
         return data.getBytes();
     }
 
+    @NotNull
     private String getData(String path) {
         Stat   stat = new Stat();
         byte[] dataBytes;
@@ -114,17 +121,18 @@ public class ZooKeeperClient implements Watcher {
         return "";
     }
 
+    @Nullable
     private BlockId getBlockId(int blockIdx) {
         String blockPath = blockchainRootPath + "/" + blockIdx;
         try {
             return BlockId.parseFrom(getData(blockPath).getBytes());
         } catch (InvalidProtocolBufferException ignored) {
             assert false;
-            return null;
+            return BlockId.getDefaultInstance();
         }
     }
 
-    InetSocketAddress getServerMembershipData(Integer serverId) {
+    public InetSocketAddress getServerMembershipData(Integer serverId) {
         String   memberPath = membershipRootPath + "/" + serverId;
         String[] data       = getData(memberPath).split("::");
         return InetSocketAddress.createUnresolved(data[0], Integer.parseInt(data[1]));
@@ -200,37 +208,45 @@ public class ZooKeeperClient implements Watcher {
 
     @Override
     public void process(WatchedEvent event) {
-        if (event.getType() == Event.EventType.None) {
-            System.out.println("Watcher called on state change with new state " + event.getState());
-            switch (event.getState()) {
-                case SyncConnected:
-                    init();
-                    break;
-                case Expired:
-                    try {
-                        zk = createZooKeeper();
-                    } catch (IOException e1) {
-                        e1.printStackTrace();
-                    }
-                default:
-                    break;
-            }
-        } else if (event.getType() == Event.EventType.NodeChildrenChanged) {
-            System.out.println("Watcher called with event type " + event.getType() + " on znode " +
-                                       event.getPath());
-            if (event.getPath().equals(membershipRootPath)) {
-                updateMembership();
-            }
-            if (event.getPath().equals(blockchainRootPath)) {
-                updateBlockchain();
-            }
-        } else {
-            System.out.println("Watcher called with event type " + event.getType());
+        switch (event.getType()) {
+            case None:
+                System.out.println(
+                        "Watcher called on state change with new state " + event.getState());
+                switch (event.getState()) {
+                    case SyncConnected:
+                        init();
+                        break;
+                    case Expired:
+                        try {
+                            zk = createZooKeeper();
+                        } catch (IOException e1) {
+                            e1.printStackTrace();
+                        }
+                    default:
+                        break;
+                }
+                break;
+            case NodeChildrenChanged:
+                System.out.println(
+                        "Watcher called with event type " + event.getType() + " on znode " +
+                                event.getPath());
+                if (event.getPath().equals(membershipRootPath)) {
+                    updateMembership();
+                }
+                if (event.getPath().equals(blockchainRootPath)) {
+                    updateBlockchain();
+                }
+
+                break;
+            default:
+                System.out.println("Watcher called with event type " + event.getType());
         }
     }
 
+    @NotNull
+    @Contract(" -> new")
     private ZooKeeper createZooKeeper() throws IOException {
-        return new ZooKeeper(zkAddress, 3000, this);
+        return new ZooKeeper(zkAddress.toString(), 3000, this);
     }
 
 }
