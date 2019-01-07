@@ -114,6 +114,16 @@ public class ZooKeeperClient implements Watcher {
         return "";
     }
 
+    private BlockId getBlockId(int blockIdx) {
+        String blockPath = blockchainRootPath + "/" + blockIdx;
+        try {
+            return BlockId.parseFrom(getData(blockPath).getBytes());
+        } catch (InvalidProtocolBufferException ignored) {
+            assert false;
+            return null;
+        }
+    }
+
     InetSocketAddress getServerMembershipData(Integer serverId) {
         String   memberPath = membershipRootPath + "/" + serverId;
         String[] data       = getData(memberPath).split("::");
@@ -168,24 +178,22 @@ public class ZooKeeperClient implements Watcher {
     private void updateBlockchain() {
         synchronized (blockchainRootPath) {
             try {
-                List<String> children;
-                children = zk.getChildren(blockchainRootPath, this);
-                for (String child : children) {
-                    Integer blockId   = Integer.parseInt(child);
-                    String  blockPath = blockchainRootPath + "/" + child;
-                    if (blockId > lastSeenBlock) {
-                        server.onBlockChained(BlockId.parseFrom(getData(blockPath).getBytes()));
-                        lastSeenBlock = Integer.parseInt(child);
-                    }
-                }
+                zk.getChildren(blockchainRootPath, this)
+                  .stream()
+                  .map(Integer::parseInt)
+                  .filter(blockIdx -> blockIdx > lastSeenBlock)
+                  .sorted()
+                  .forEachOrdered(blockIdx -> {
+                      server.onBlockChained(getBlockId(blockIdx));
+                      lastSeenBlock = blockIdx;
+                  });
+
             } catch (KeeperException | InterruptedException e1) {
                 e1.printStackTrace();
                 try {
                     Thread.sleep(3);
                 } catch (InterruptedException ignored) {
                 }
-            } catch (InvalidProtocolBufferException e) {
-                e.printStackTrace();
             }
         }
     }
