@@ -1,8 +1,10 @@
 import ClientServerCommunication.*;
 import ServerCommunication.*;
 import io.grpc.stub.StreamObserver;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,17 +22,15 @@ public class Server {
     private final BlockBuilder                         blockBuilder = new BlockBuilder();
     private final io.grpc.Server                       serverListener;
     private final io.grpc.Server                       clientListener;
-
-    private final ZooKeeperClient zkClient;
-    private final String          hostname   = "localhost";
-    private final int             clientPort;
-    private final int             serverPort;
-    private       int             myBlockNum = 0;
+    private final ZooKeeperClient                      zkClient;
+    private final InetSocketAddress                    address;
+    private final int                                  serverPort;
+    private       int                                  myBlockNum = 0;
 
     Server(int id, int clientPort, int serverPort, Duration blockWindow) {
         this.id = id;
+        address = SocketAddressFactory.from("localhost", serverPort);
         batchingStrategy = new TimedAdaptiveBatching(this::trySealBlock, blockWindow);
-        this.clientPort = clientPort;
         this.serverPort = serverPort;
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
@@ -119,7 +119,7 @@ public class Server {
         ledger.apply(Block.from(blockMsg));
     }
 
-    private BlockId pushBlock(Block block) {
+    private BlockId pushBlock(@NotNull Block block) {
         var blockMsgBuilder = BlockMsg.newBuilder();
         block.addToBlockMsg(blockMsgBuilder);
 
@@ -153,16 +153,8 @@ public class Server {
         return id;
     }
 
-    String getHostname() {
-        return hostname;
-    }
-
-    int getClientPort() {
-        return clientPort;
-    }
-
-    int getServerPort() {
-        return serverPort;
+    InetSocketAddress getServerAddress() {
+        return address;
     }
 
     private class ServerRpc extends ServerGrpc.ServerImplBase {

@@ -16,8 +16,8 @@ import java.util.Set;
 
 public class ZooKeeperClient implements Watcher {
 
-    private final InetSocketAddress zkAddress = InetSocketAddress.createUnresolved("127.0.0.1",
-                                                                                   2181);
+    private final InetSocketAddress zkAddress = SocketAddressFactory.from("127.0.0.1",
+                                                                          2181);
 
     private static final String    blockchainRootPath = "/Blockchain";
     private static final String    membershipRootPath = "/Membership";
@@ -68,7 +68,7 @@ public class ZooKeeperClient implements Watcher {
         // Try to create the blockchain first block if not exist
         try {
             zk.create(blockchainRootPath, null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-        } catch (KeeperException.NodeExistsException e) {
+        } catch (KeeperException.NodeExistsException ignored) {
             // It's OK
         } catch (KeeperException | InterruptedException e) {
             e.printStackTrace();
@@ -77,7 +77,7 @@ public class ZooKeeperClient implements Watcher {
         // Try to create the membership first block if not exist
         try {
             zk.create(membershipRootPath, null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-        } catch (KeeperException.NodeExistsException e) {
+        } catch (KeeperException.NodeExistsException ignored) {
             // It's OK
         } catch (KeeperException | InterruptedException e) {
             e.printStackTrace();
@@ -99,8 +99,7 @@ public class ZooKeeperClient implements Watcher {
 
     @NotNull
     private byte[] getMembershipData() {
-        String data = server.getHostname() + "::" + server.getServerPort();
-        return data.getBytes();
+        return server.getServerAddress().toString().getBytes();
     }
 
     @NotNull
@@ -133,9 +132,8 @@ public class ZooKeeperClient implements Watcher {
     }
 
     public InetSocketAddress getServerMembershipData(Integer serverId) {
-        String   memberPath = membershipRootPath + "/" + serverId;
-        String[] data       = getData(memberPath).split("::");
-        return InetSocketAddress.createUnresolved(data[0], Integer.parseInt(data[1]));
+        String memberPath = membershipRootPath + "/" + serverId;
+        return SocketAddressFactory.from(getData(memberPath));
     }
 
     public void updateServerMembershipNode() {
