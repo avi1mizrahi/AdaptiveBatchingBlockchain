@@ -1,4 +1,5 @@
-import ClientServerCommunication.*;
+package Blockchain;
+
 import ServerCommunication.*;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
@@ -21,22 +22,19 @@ public class Server {
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
     private final BlockBuilder                         blockBuilder = new BlockBuilder();
     private final io.grpc.Server                       serverListener;
-    private final io.grpc.Server                       clientListener;
     private final ZooKeeperClient                      zkClient;
     private final InetSocketAddress                    address;
     private final int                                  serverPort;
     private       int                                  myBlockNum = 0;
+    private       int                                  myTxNum = 0;
 
-    Server(int id, int clientPort, int serverPort, Duration blockWindow) {
+    Server(int id, int serverPort, Duration blockWindow) {
         this.id = id;
         address = SocketAddressFactory.from("localhost", serverPort);
         batchingStrategy = new TimedAdaptiveBatching(this::trySealBlock, blockWindow);
         this.serverPort = serverPort;
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
-                                              .build();
-        clientListener = io.grpc.ServerBuilder.forPort(clientPort)
-                                              .addService(new ClientRpc())
                                               .build();
         zkClient = new ZooKeeperClient(this);
     }
@@ -45,29 +43,25 @@ public class Server {
         int port = 55555;
         if (args.length >= 1) port = Integer.parseInt(args[0]);
         Server server = new ServerBuilder().setId(1)
-                                           .setClientPort(port)
                                            .setServerPort(port - 11111)
                                            .createServer()
                                            .start();
         server.awaitTermination();
     }
 
-    Server start() throws IOException {
+    public Server start() throws IOException {
         batchingStrategy.start();
         serverListener.start();
-        clientListener.start();
         return this;
     }
 
     void awaitTermination() throws InterruptedException {
-        clientListener.awaitTermination();
         serverListener.awaitTermination();
     }
 
     void shutdown() {
         zkClient.shutdown();
         batchingStrategy.shutdown();
-        clientListener.shutdown();
         serverListener.shutdown();
         assert blockBuilder.isEmpty();
     }
@@ -186,76 +180,63 @@ public class Server {
         }
     }
 
-    private class ClientRpc extends ClientGrpc.ClientImplBase {
-        @Override
-        public void createAccount(CreateAccountReq request,
-                                  StreamObserver<CreateAccountRsp> responseObserver) {
-            batchingStrategy.onRequestBegin();
 
-            System.out.println("SERVER: Create account");
-            blockBuilder.append(new NewAccountTx().setResponse(responseObserver));
+    public TxId createAccount() {
+        batchingStrategy.onRequestBegin();
 
-            batchingStrategy.onRequestEnd();
-        }
+        System.out.println("SERVER: Create account");
+        blockBuilder.append(new NewAccountTx());
 
-        @Override
-        public void deleteAccount(DeleteAccountReq request,
-                                  StreamObserver<DeleteAccountRsp> responseObserver) {
-            batchingStrategy.onRequestBegin();
+        batchingStrategy.onRequestEnd();
+        return new TxId(id, myTxNum++);
+    }
 
-            var account = Account.from(request.getAccountId());
-            System.out.println("SERVER: Delete " + account);
+    public TxId deleteAccount(int id) {
+        batchingStrategy.onRequestBegin();
 
-            blockBuilder.append(new DeleteAccountTx(account).setResponse(responseObserver));
+        var account = Account.from(id);
+        System.out.println("SERVER: Delete " + account);
 
-            batchingStrategy.onRequestEnd();
-        }
+        blockBuilder.append(new DeleteAccountTx(account));
 
-        @Override
-        public void addAmount(AddAmountReq request, StreamObserver<AddAmountRsp> responseObserver) {
-            batchingStrategy.onRequestBegin();
+        batchingStrategy.onRequestEnd();
+        return new TxId(id, myTxNum++);
+    }
 
-            var amount  = request.getAmount();
-            var account = Account.from(request.getAccountId());
-            System.out.println("SERVER: " + account + ", add " + amount);
+    public TxId addAmount(int id, int amount) {
+        batchingStrategy.onRequestBegin();
 
-            blockBuilder.append(new DepositTx(account,
-                                              amount).setResponse(responseObserver));
+        var account = Account.from(id);
+        System.out.println("SERVER: " + account + ", add " + amount);
 
-            batchingStrategy.onRequestEnd();
-        }
+        blockBuilder.append(new DepositTx(account, amount));
 
-        @Override
-        public void getAmount(GetAmountReq request, StreamObserver<GetAmountRsp> responseObserver) {
-            var account = Account.from(request.getAccountId());
-            System.out.println("SERVER: getAmount " + account);
-            var rspBuilder = GetAmountRsp.newBuilder();
+        batchingStrategy.onRequestEnd();
+        return new TxId(id, myTxNum++);
+    }
 
-            Integer amount = ledger.get(account);
+    public Integer getAmount(int id) {
+        var account = Account.from(id);
+        System.out.println("SERVER: getAmount " + account);
 
-            if (amount != null) {
-                rspBuilder.setAmount(amount);
-                rspBuilder.setSuccess(true);
-                System.out.println("SERVER: Amount of " + account + " is " + amount);
-            }
+        Integer amount = ledger.get(account);
+        return amount;
+    }
 
-            responseObserver.onNext(rspBuilder.build());
-            responseObserver.onCompleted();
-        }
+    public TxId transfer(int from, int to, int amount) {
+        batchingStrategy.onRequestBegin();
 
-        @Override
-        public void transfer(TransferReq request,
-                             StreamObserver<TransferRsp> responseObserver) {
-            batchingStrategy.onRequestBegin();
+        var accountFrom   = Account.from(from);
+        var accountTo     = Account.from(to);
+        System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
 
-            var amount = request.getAmount();
-            var from   = Account.from(request.getFromId());
-            var to     = Account.from(request.getToId());
-            System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
+        blockBuilder.append(new TransferTx(accountFrom, accountTo, amount));
 
-            blockBuilder.append(new TransferTx(from, to, amount).setResponse(responseObserver));
+        batchingStrategy.onRequestEnd();
+        return new TxId(id, myTxNum++);
+    }
 
-            batchingStrategy.onRequestEnd();
-        }
+    public void getTxStatus(int serverId, int txId) {
+        //TODO: go to transactions and check
     }
 }

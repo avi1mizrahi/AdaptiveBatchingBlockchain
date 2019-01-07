@@ -1,3 +1,5 @@
+package Blockchain;
+
 import ServerCommunication.ServerGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;

@@ -1,3 +1,5 @@
+package Blockchain;
+
 import ServerCommunication.BlockId;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.zookeeper.*;
@@ -43,7 +45,6 @@ public class ZooKeeperClient implements Watcher {
         int    SERVER_PORT = 44444;
         String LOCALHOST   = "localhost";
         Server server = new ServerBuilder().setId(1)
-                                           .setClientPort(CLIENT_PORT)
                                            .setServerPort(SERVER_PORT)
                                            .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
                                            .createServer()

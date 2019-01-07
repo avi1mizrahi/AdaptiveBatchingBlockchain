@@ -1,3 +1,5 @@
+package Blockchain;
+
 import ServerCommunication.BlockMsg;
 
 import javax.annotation.concurrent.ThreadSafe;

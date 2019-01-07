@@ -1,7 +1,12 @@
-class Account {
+package Blockchain;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+@Data
+public class Account {
     private final int id;
 
-    Account(int id) {
+    Account(@JsonProperty(value = "id", required = true) int id) {
         this.id = id;
     }
 
@@ -25,6 +30,6 @@ class Account {
 
     @Override
     public String toString() {
-        return "Account" + id;
+        return "Blockchain.Account" + id;
     }
 }

@@ -1,9 +1,9 @@
-import ClientServerCommunication.*;
+package Blockchain;
+
+import ClientServerCommunication.CreateAccountReq;
 import ServerCommunication.Tx;
-import io.grpc.stub.StreamObserver;
 
 abstract class Transaction {
-    StreamObserver response = null;
 
     // This is ugly
     static Transaction from(Tx tx) {
@@ -28,15 +28,8 @@ abstract class Transaction {
         return null;
     }
 
-    Transaction setResponse(StreamObserver response) {
-        this.response = response;
-        return this;
-    }
-
     public void process(Ledger ledger) {
         doYourThing(ledger);
-        response.onCompleted();
-        response = null;
     }
 
     abstract void doYourThing(Ledger ledger);
@@ -63,11 +56,6 @@ class NewAccountTx extends Transaction {
     @SuppressWarnings("unchecked")
     void doYourThing(Ledger ledger) {
         var account = ledger.newAccount();
-        if (response != null) {
-            var rspBuilder = CreateAccountRsp.newBuilder();
-            rspBuilder.setId(account.getId()).setSuccess(true);
-            response.onNext(rspBuilder.build());
-        }
         System.out.println("SERVER: Created " + account);
     }
 
@@ -93,9 +81,7 @@ class DeleteAccountTx extends Transaction {
     @SuppressWarnings("unchecked")
     void doYourThing(Ledger ledger) {
         ledger.deleteAccount(account);
-        if (response != null) {
-            response.onNext(DeleteAccountRsp.getDefaultInstance());
-        }
+
     }
 
     @Override
@@ -122,9 +108,7 @@ class DepositTx extends Transaction {
     @SuppressWarnings("unchecked")
     void doYourThing(Ledger ledger) {
         boolean success = ledger.add(account, amount);
-        if (response != null) {
-            response.onNext(AddAmountRsp.newBuilder().setSuccess(success).build());
-        }
+
     }
 
     @Override
@@ -153,9 +137,7 @@ class TransferTx extends Transaction {
     @SuppressWarnings("unchecked")
     void doYourThing(Ledger ledger) {
         boolean success = transfer(ledger);
-        if (response != null) {
-            response.onNext(TransferRsp.newBuilder().setSuccess(success).build());
-        }
+
     }
 
     @Override
