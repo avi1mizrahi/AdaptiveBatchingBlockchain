@@ -14,8 +14,8 @@ public class Server {
     private final BatchingStrategy                     batchingStrategy;
     private final int                                  id;
     private final Ledger                               ledger       = new Ledger();
-    // TODO: add concurrentSet<ServerID> crashedservers
-    private final Map<Integer, PeerServer>             peers        = new HashMap<>();
+    private final Set<Integer>                         lostPeerIds  = new HashSet<>();// TODO: protect
+    private final Map<Integer, PeerServer>             peers        = new HashMap<>();// TODO: protect
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
     private final BlockBuilder                         blockBuilder = new BlockBuilder();
     private final io.grpc.Server                       serverListener;
@@ -100,8 +100,7 @@ public class Server {
         //  this can by done once for all disconnected servers
         int latestBlock = Integer.MAX_VALUE - 1; // TODO replace with the above real value
 
-        // TODO: first mark this server as down
-        //  crashedservers.add
+        lostPeerIds.add(serverId);
 
         List<BlockId> toBeDeleted = new ArrayList<>();
         pending.forEachKey(1024, blockId -> {
@@ -113,10 +112,9 @@ public class Server {
         toBeDeleted.forEach(pending::remove);
     }
 
-    // TODO: this should be done for each pending block that was agreed
     void onBlockChained(BlockId blockId) {
         var blockMsg = pending.remove(blockId);
-        assert blockMsg != null;//TODO remove
+        assert blockMsg != null;//TODO remove, what if it's not here yet? need to pull
 
         ledger.apply(Block.from(blockMsg));
     }
@@ -170,10 +168,13 @@ public class Server {
     private class ServerRpc extends ServerGrpc.ServerImplBase {
         @Override
         public void pushBlock(PushBlockReq request, StreamObserver<PushBlockRsp> responseObserver) {
-            var block = request.getBlock();
-            // TODO: if the sending server is down, don't put
-            //  if server is in crashedservers
-            pending.putIfAbsent(block.getId(), block);
+            var block   = request.getBlock();
+            var blockId = block.getId();
+
+            if (lostPeerIds.contains(blockId.getServerId()))
+                return; // don't listen to this zombie
+
+            pending.putIfAbsent(blockId, block);
 
             responseObserver.onNext(PushBlockRsp.newBuilder().setSuccess(true).build());
             responseObserver.onCompleted();
