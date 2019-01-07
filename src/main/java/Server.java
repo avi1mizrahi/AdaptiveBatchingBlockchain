@@ -113,6 +113,7 @@ public class Server {
         var blockMsg = pending.remove(blockId);
         assert blockMsg != null;//TODO remove, what if it's not here yet? need to pull
 
+        //TODO: check that it's new
         ledger.apply(Block.from(blockMsg));
     }
 
@@ -140,6 +141,7 @@ public class Server {
         Block block   = blockBuilder.seal();
         var   blockId = pushBlock(block);
         zkClient.postBlock(blockId);
+        // TODO: should apply only after we sure it is the latest, try to bring the rest if not
         ledger.apply(block);
         System.out.println("SERVER: appended!");
         System.out.println(block);

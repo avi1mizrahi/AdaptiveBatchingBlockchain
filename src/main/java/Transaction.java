@@ -22,7 +22,7 @@ abstract class Transaction {
                                       transferTx.getAmount());
             case GETAMOUNT:
             case TXTYPE_NOT_SET:
-                assert false;
+                throw new RuntimeException();
         }
 
         return null;
