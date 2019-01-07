@@ -138,7 +138,7 @@ class IntegrationTest {
 //                thread.join();
 //            } catch (InterruptedException e) {
 //                e.printStackTrace();
-//                assert false;
+//                throw new RuntimeException();
 //            }
 //        });
 //

@@ -25,7 +25,6 @@ public class Server {
     private final io.grpc.Server                       serverListener;
     private final ZooKeeperClient                      zkClient;
     private final InetSocketAddress                    address;
-    private final int                                  serverPort;
     private       int                                  myBlockNum   = 0;
     private       AtomicInteger                        myTxNum      = new AtomicInteger(0);
 
@@ -33,7 +32,6 @@ public class Server {
         this.id = id;
         address = SocketAddressFactory.from("localhost", serverPort);
         batchingStrategy = new TimedAdaptiveBatching(this::trySealBlock, blockWindow);
-        this.serverPort = serverPort;
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
                                               .build();
@@ -61,7 +59,6 @@ public class Server {
     }
 
     void shutdown() {
-        zkClient.shutdown();
         batchingStrategy.shutdown();
         serverListener.shutdown();
         assert blockBuilder.isEmpty();
@@ -111,6 +108,7 @@ public class Server {
         var blockMsg = pending.remove(blockId);
         assert blockMsg != null;//TODO remove, what if it's not here yet? need to pull
 
+        //TODO: check that it's new
         ledger.apply(Block.from(blockMsg));
     }
 
@@ -138,6 +136,7 @@ public class Server {
         Block block   = blockBuilder.seal();
         var   blockId = pushBlock(block);
         zkClient.postBlock(blockId);
+        // TODO: should apply only after we sure it is the latest, try to bring the rest if not
         ledger.apply(block);
         System.out.println("SERVER: appended!");
         System.out.println(block);
