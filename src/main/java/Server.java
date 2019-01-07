@@ -24,14 +24,12 @@ public class Server {
     private final io.grpc.Server                       clientListener;
     private final ZooKeeperClient                      zkClient;
     private final InetSocketAddress                    address;
-    private final int                                  serverPort;
     private       int                                  myBlockNum = 0;
 
     Server(int id, int clientPort, int serverPort, Duration blockWindow) {
         this.id = id;
         address = SocketAddressFactory.from("localhost", serverPort);
         batchingStrategy = new TimedAdaptiveBatching(this::trySealBlock, blockWindow);
-        this.serverPort = serverPort;
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
                                               .build();
@@ -65,7 +63,6 @@ public class Server {
     }
 
     void shutdown() {
-        zkClient.shutdown();
         batchingStrategy.shutdown();
         clientListener.shutdown();
         serverListener.shutdown();

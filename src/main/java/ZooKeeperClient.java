@@ -9,9 +9,9 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 public class ZooKeeperClient implements Watcher {
@@ -31,7 +31,7 @@ public class ZooKeeperClient implements Watcher {
         membershipPath = membershipRootPath + "/" + server.getId();
         System.out.println(zkAddress);
         try {
-            this.zk = createZooKeeper();
+            zk = createZooKeeper();
         } catch (IOException e1) {
             // TODO: need to think what to do if there is an error here
             e1.printStackTrace();
@@ -55,13 +55,6 @@ public class ZooKeeperClient implements Watcher {
         }
         ZooKeeperClient zookeeperClient = new ZooKeeperClient(server);
 
-    }
-
-    public void shutdown() {
-        try {
-            zk.close();
-        } catch (InterruptedException ignored) {
-        }
     }
 
     private void init() {
@@ -88,7 +81,7 @@ public class ZooKeeperClient implements Watcher {
             zk.create(membershipPath,
                       getMembershipData(),
                       ZooDefs.Ids.OPEN_ACL_UNSAFE,
-                      CreateMode.EPHEMERAL_SEQUENTIAL);
+                      CreateMode.EPHEMERAL);
         } catch (KeeperException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -147,26 +140,20 @@ public class ZooKeeperClient implements Watcher {
     }
 
     private void updateMembership() {
-        synchronized (membershipPath) {
-            Set<Integer> serversView = new HashSet<>();
-            try {
-                List<String> children;
-                children = zk.getChildren(membershipRootPath, this);
-                for (String child : children) {
-                    Integer serverId = Integer.parseInt(child);
-                    if (!serverId.equals(server.getId())) {
-                        serversView.add(serverId);
-                    }
-                }
-            } catch (KeeperException | InterruptedException e1) {
-                e1.printStackTrace();
-                try {
-                    Thread.sleep(3);
-                } catch (InterruptedException ignored) {
-                }
-            }
-            server.onMembershipChange(serversView);
+        List<String> children;
+        try {
+            children = zk.getChildren(membershipRootPath, true);
+        } catch (KeeperException | InterruptedException e1) {
+            e1.printStackTrace();
+            return;
         }
+
+        Set<Integer> view = children.stream()
+                                    .map(Integer::parseInt)
+                                    .filter(integer -> !integer.equals(server.getId()))
+                                    .collect(Collectors.toSet());
+
+        server.onMembershipChange(view);
     }
 
     void postBlock(BlockId blockId) {
@@ -184,7 +171,7 @@ public class ZooKeeperClient implements Watcher {
     private void updateBlockchain() {
         synchronized (blockchainRootPath) {
             try {
-                zk.getChildren(blockchainRootPath, this)
+                zk.getChildren(blockchainRootPath, true)
                   .stream()
                   .map(Integer::parseInt)
                   .filter(blockIdx -> blockIdx > lastSeenBlock)
@@ -216,6 +203,7 @@ public class ZooKeeperClient implements Watcher {
                         break;
                     case Expired:
                         try {
+                            //TODO: should we retry??
                             zk = createZooKeeper();
                         } catch (IOException e1) {
                             e1.printStackTrace();
