@@ -123,7 +123,7 @@ public class ZooKeeperClient implements Watcher {
 
     @Nullable
     private BlockId getBlockId(int blockIdx) {
-        String blockPath = blockchainRootPath + "/" + blockIdx;
+        String blockPath = blockchainRootPath + "/" + String.format("%010d", blockIdx);
         try {
             return BlockId.parseFrom(getData(blockPath).getBytes());
         } catch (InvalidProtocolBufferException ignored) {
