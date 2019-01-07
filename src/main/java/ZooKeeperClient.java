@@ -167,7 +167,7 @@ public class ZooKeeperClient implements Watcher {
     void postBlock(BlockId blockId) {
         // Try to create the znode of this sever under /membership.
         try {
-            zk.create(blockchainRootPath,
+            zk.create(blockchainRootPath + "/",
                       blockId.toByteArray(),
                       ZooDefs.Ids.OPEN_ACL_UNSAFE,
                       CreateMode.PERSISTENT_SEQUENTIAL);
