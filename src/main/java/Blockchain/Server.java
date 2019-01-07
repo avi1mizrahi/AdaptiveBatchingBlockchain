@@ -9,6 +9,7 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,8 +26,8 @@ public class Server {
     private final ZooKeeperClient                      zkClient;
     private final InetSocketAddress                    address;
     private final int                                  serverPort;
-    private       int                                  myBlockNum = 0;
-    private       int                                  myTxNum = 0;
+    private       int                                  myBlockNum   = 0;
+    private       AtomicInteger                        myTxNum      = new AtomicInteger(0);
 
     Server(int id, int serverPort, Duration blockWindow) {
         this.id = id;
@@ -188,7 +189,7 @@ public class Server {
         blockBuilder.append(new NewAccountTx());
 
         batchingStrategy.onRequestEnd();
-        return new TxId(id, myTxNum++);
+        return new TxId(id, generateTxUid());
     }
 
     public TxId deleteAccount(int id) {
@@ -200,7 +201,7 @@ public class Server {
         blockBuilder.append(new DeleteAccountTx(account));
 
         batchingStrategy.onRequestEnd();
-        return new TxId(id, myTxNum++);
+        return new TxId(id, generateTxUid());
     }
 
     public TxId addAmount(int id, int amount) {
@@ -212,7 +213,7 @@ public class Server {
         blockBuilder.append(new DepositTx(account, amount));
 
         batchingStrategy.onRequestEnd();
-        return new TxId(id, myTxNum++);
+        return new TxId(id, generateTxUid());
     }
 
     public Integer getAmount(int id) {
@@ -233,7 +234,11 @@ public class Server {
         blockBuilder.append(new TransferTx(accountFrom, accountTo, amount));
 
         batchingStrategy.onRequestEnd();
-        return new TxId(id, myTxNum++);
+        return new TxId(id, generateTxUid());
+    }
+
+    private int generateTxUid() {
+        return myTxNum.incrementAndGet();
     }
 
     public void getTxStatus(int serverId, int txId) {
