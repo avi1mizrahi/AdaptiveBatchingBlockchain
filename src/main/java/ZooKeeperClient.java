@@ -1,5 +1,8 @@
 import ServerCommunication.BlockId;
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.FileAppender;
+import org.apache.log4j.SimpleLayout;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import org.jetbrains.annotations.Contract;
@@ -27,6 +30,11 @@ public class ZooKeeperClient implements Watcher {
     private              Integer   lastSeenBlock      = 0;
 
     ZooKeeperClient(@NotNull Server server) {
+        try {
+            BasicConfigurator.configure(new FileAppender(new SimpleLayout(), "/dev/null"));
+        } catch (IOException ignored) {
+        }
+
         this.server = server;
         membershipPath = membershipRootPath + "/" + server.getId();
         System.out.println(zkAddress);
