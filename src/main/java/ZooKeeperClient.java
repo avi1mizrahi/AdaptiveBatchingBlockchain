@@ -7,7 +7,6 @@ import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -65,33 +64,25 @@ public class ZooKeeperClient implements Watcher {
 
     }
 
-    private void init() {
-        // Try to create the blockchain first block if not exist
-        try {
-            zk.create(blockchainRootPath, null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-        } catch (KeeperException.NodeExistsException ignored) {
-            // It's OK
-        } catch (KeeperException | InterruptedException e) {
-            e.printStackTrace();
-        }
-
+    private void init() throws KeeperException, InterruptedException {
         // Try to create the membership first block if not exist
         try {
             zk.create(membershipRootPath, null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         } catch (KeeperException.NodeExistsException ignored) {
             // It's OK
-        } catch (KeeperException | InterruptedException e) {
-            e.printStackTrace();
         }
 
         // Try to create the znode of this sever under /membership.
+        zk.create(membershipPath,
+                  getMembershipData(),
+                  ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                  CreateMode.EPHEMERAL);
+
+        // Try to create the blockchain first block if not exist
         try {
-            zk.create(membershipPath,
-                      getMembershipData(),
-                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
-                      CreateMode.EPHEMERAL);
-        } catch (KeeperException | InterruptedException e) {
-            e.printStackTrace();
+            zk.create(blockchainRootPath, null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        } catch (KeeperException.NodeExistsException ignored) {
+            // It's OK
         }
 
         updateMembership();
@@ -112,23 +103,16 @@ public class ZooKeeperClient implements Watcher {
             return new String(dataBytes);
         } catch (KeeperException | InterruptedException e1) {
             e1.printStackTrace();
-            try {
-                Thread.sleep(3);
-            } catch (InterruptedException ignored) {
-
-            }
         }
         return "";
     }
 
-    @Nullable
     private BlockId getBlockId(int blockIdx) {
         String blockPath = blockchainRootPath + "/" + String.format("%010d", blockIdx);
         try {
             return BlockId.parseFrom(getData(blockPath).getBytes());
         } catch (InvalidProtocolBufferException ignored) {
-            assert false;
-            return BlockId.getDefaultInstance();
+            throw new RuntimeException();
         }
     }
 
@@ -137,24 +121,9 @@ public class ZooKeeperClient implements Watcher {
         return SocketAddressFactory.from(getData(memberPath));
     }
 
-    public void updateServerMembershipNode() {
-        try {
-            zk.setData(membershipPath,
-                       getMembershipData(),
-                       zk.exists(membershipPath, false).getVersion());
-        } catch (KeeperException | InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void updateMembership() {
+    private void updateMembership() throws KeeperException, InterruptedException {
         List<String> children;
-        try {
-            children = zk.getChildren(membershipRootPath, true);
-        } catch (KeeperException | InterruptedException e1) {
-            e1.printStackTrace();
-            return;
-        }
+        children = zk.getChildren(membershipRootPath, true);
 
         Set<Integer> view = children.stream()
                                     .map(Integer::parseInt)
@@ -176,64 +145,56 @@ public class ZooKeeperClient implements Watcher {
         }
     }
 
-    private void updateBlockchain() {
+    private void updateBlockchain() throws KeeperException, InterruptedException {
         synchronized (blockchainRootPath) {
-            try {
-                zk.getChildren(blockchainRootPath, true)
-                  .stream()
-                  .map(Integer::parseInt)
-                  .filter(blockIdx -> blockIdx > lastSeenBlock)
-                  .sorted()
-                  .forEachOrdered(blockIdx -> {
-                      server.onBlockChained(getBlockId(blockIdx));
-                      lastSeenBlock = blockIdx;
-                  });
-
-            } catch (KeeperException | InterruptedException e1) {
-                e1.printStackTrace();
-                try {
-                    Thread.sleep(3);
-                } catch (InterruptedException ignored) {
-                }
-            }
+            zk.getChildren(blockchainRootPath, true)
+              .stream()
+              .map(Integer::parseInt)
+              .filter(blockIdx -> blockIdx > lastSeenBlock)
+              .sorted()
+              .forEachOrdered(blockIdx -> {
+                  server.onBlockChained(getBlockId(blockIdx));
+                  lastSeenBlock = blockIdx;
+              });
         }
     }
 
     @Override
     public void process(WatchedEvent event) {
-        switch (event.getType()) {
-            case None:
-                System.out.println(
-                        "Watcher called on state change with new state " + event.getState());
-                switch (event.getState()) {
-                    case SyncConnected:
-                        init();
-                        break;
-                    case Expired:
-                        try {
+        try {
+            switch (event.getType()) {
+                case None:
+                    System.out.println(
+                            "Watcher called on state change with new state " + event.getState());
+                    switch (event.getState()) {
+                        case SyncConnected:
+                            init();
+                            break;
+                        case Expired:
                             //TODO: should we retry??
                             zk = createZooKeeper();
-                        } catch (IOException e1) {
-                            e1.printStackTrace();
-                        }
-                    default:
-                        break;
-                }
-                break;
-            case NodeChildrenChanged:
-                System.out.println(
-                        "Watcher called with event type " + event.getType() + " on znode " +
-                                event.getPath());
-                if (event.getPath().equals(membershipRootPath)) {
-                    updateMembership();
-                }
-                if (event.getPath().equals(blockchainRootPath)) {
-                    updateBlockchain();
-                }
+                        default:
+                            break;
+                    }
+                    break;
+                case NodeChildrenChanged:
+                    System.out.println(
+                            "Watcher called with event type " + event.getType() + " on znode " +
+                                    event.getPath());
+                    if (event.getPath().equals(membershipRootPath)) {
+                        updateMembership();
+                    }
+                    if (event.getPath().equals(blockchainRootPath)) {
+                        updateBlockchain();
+                    }
 
-                break;
-            default:
-                System.out.println("Watcher called with event type " + event.getType());
+                    break;
+                default:
+                    System.out.println("Watcher called with event type " + event.getType());
+            }
+        } catch (KeeperException | InterruptedException | IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException();
         }
     }
 
