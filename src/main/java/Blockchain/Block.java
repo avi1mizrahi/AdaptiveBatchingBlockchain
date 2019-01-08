@@ -5,6 +5,7 @@ import ServerCommunication.BlockMsg;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -44,16 +45,24 @@ class Block {
 class BlockBuilder {
     private final ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
     private       ConcurrentLinkedQueue<Transaction> txs           = new ConcurrentLinkedQueue<>();
+    private final AtomicInteger                      myTxNum       = new AtomicInteger(0);
+    private final int                                id;
+
+    BlockBuilder(int id) {
+        this.id = id;
+    }
 
     boolean isEmpty() {
         return txs.isEmpty();
     }
 
-    void append(Transaction tx) {
+    TxId append(Transaction tx) {
+        TxId txId = new TxId(this.id, myTxNum.incrementAndGet());
         try (var ignored = CriticalSection.start(readWriteLock.readLock())) {
             txs.add(tx);
         }
-
+        tx.setId(txId);
+        return txId;
     }
 
     Block seal() {

@@ -9,7 +9,6 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,15 +20,15 @@ public class Server {
     private final Set<Integer>                         lostPeerIds  = new HashSet<>();// TODO: protect
     private final Map<Integer, PeerServer>             peers        = new HashMap<>();// TODO: protect
     private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
-    private final BlockBuilder                         blockBuilder = new BlockBuilder();
+    private final BlockBuilder                         blockBuilder;
     private final io.grpc.Server                       serverListener;
     private final ZooKeeperClient                      zkClient;
     private final InetSocketAddress                    address;
-    private       int                                  myBlockNum   = 0;
-    private       AtomicInteger                        myTxNum      = new AtomicInteger(0);
+    private       int                                  myBlockNum   = 0; // can be owned by blockBuilder
 
     Server(int id, int serverPort, Duration blockWindow) {
         this.id = id;
+        blockBuilder = new BlockBuilder(id);
         address = SocketAddressFactory.from("localhost", serverPort);
         batchingStrategy = new TimedAdaptiveBatching(this::trySealBlock, blockWindow);
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
@@ -182,62 +181,48 @@ public class Server {
 
 
     public TxId createAccount() {
-        batchingStrategy.onRequestBegin();
+        try (var ignored = batchingStrategy.createRequestWindow()) {
+            System.out.println("SERVER: Create account");
 
-        System.out.println("SERVER: Create account");
-        blockBuilder.append(new NewAccountTx());
-
-        batchingStrategy.onRequestEnd();
-        return new TxId(id, generateTxUid());
+            return blockBuilder.append(new NewAccountTx());
+        }
     }
 
     public TxId deleteAccount(int id) {
-        batchingStrategy.onRequestBegin();
+        try (var ignored = batchingStrategy.createRequestWindow()) {
+            var account = Account.from(id);
+            System.out.println("SERVER: Delete " + account);
 
-        var account = Account.from(id);
-        System.out.println("SERVER: Delete " + account);
-
-        blockBuilder.append(new DeleteAccountTx(account));
-
-        batchingStrategy.onRequestEnd();
-        return new TxId(id, generateTxUid());
+            return blockBuilder.append(new DeleteAccountTx(account));
+        }
     }
 
     public TxId addAmount(int id, int amount) {
-        batchingStrategy.onRequestBegin();
+        try (var ignored = batchingStrategy.createRequestWindow()) {
+            var account = Account.from(id);
+            System.out.println("SERVER: " + account + ", add " + amount);
 
-        var account = Account.from(id);
-        System.out.println("SERVER: " + account + ", add " + amount);
+            return blockBuilder.append(new DepositTx(account, amount));
 
-        blockBuilder.append(new DepositTx(account, amount));
-
-        batchingStrategy.onRequestEnd();
-        return new TxId(id, generateTxUid());
+        }
     }
 
     public Integer getAmount(int id) {
         var account = Account.from(id);
         System.out.println("SERVER: getAmount " + account);
 
-        Integer amount = ledger.get(account);
-        return amount;
+        return ledger.get(account);
     }
 
     public TxId transfer(int from, int to, int amount) {
-        batchingStrategy.onRequestBegin();
+        try (var ignored = batchingStrategy.createRequestWindow()) {
+            var accountFrom = Account.from(from);
+            var accountTo   = Account.from(to);
 
-        var accountFrom   = Account.from(from);
-        var accountTo     = Account.from(to);
-        System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
+            System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
 
-        blockBuilder.append(new TransferTx(accountFrom, accountTo, amount));
-
-        batchingStrategy.onRequestEnd();
-        return new TxId(id, generateTxUid());
-    }
-
-    private int generateTxUid() {
-        return myTxNum.incrementAndGet();
+            return blockBuilder.append(new TransferTx(accountFrom, accountTo, amount));
+        }
     }
 
     public void getTxStatus(int serverId, int txId) {
