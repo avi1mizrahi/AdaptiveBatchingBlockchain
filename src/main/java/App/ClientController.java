@@ -1,6 +1,8 @@
 package App;
 
 import Blockchain.Account;
+import Blockchain.Transaction.NewAccountTx;
+import Blockchain.Transaction.Transaction;
 import Blockchain.TxId;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -80,11 +82,12 @@ public class ClientController {
 
     @GetMapping("/newAccounts/{serverId}/{txId}")
     Account getAccountStatus(@PathVariable int serverId, @PathVariable int txId) {
-        return Application.server.getTxStatus(new TxId(serverId, txId)).getAccount();
+        Transaction.Result status = Application.server.getTxStatus(new TxId(serverId, txId));
+        return ((NewAccountTx.Result)status).getNewAccount();
     }
 
     @GetMapping("/txs/{serverId}/{txId}")
     Boolean getTxStatus(@PathVariable int serverId, @PathVariable int txId) {
-        return Application.server.getTxStatus(new TxId(serverId, txId)).getIsCommitted();
+        return Application.server.getTxStatus(new TxId(serverId, txId)).isCommitted();
     }
 }
