@@ -4,6 +4,11 @@ import ServerCommunication.CreateAccountReq;
 import ServerCommunication.Tx;
 
 abstract class Transaction {
+    private TxId id;
+
+    void setId(TxId id) {
+        this.id = id;
+    }
 
     // This is ugly
     static Transaction from(Tx tx) {
@@ -36,6 +41,7 @@ abstract class Transaction {
 
     final Tx toTxMsg() {
         var builder = Tx.newBuilder();
+        builder.getIdBuilder().setSerialNumber(id.getTxId()).setServerId(id.getServerId());
         addToMsg(builder);
         return builder.build();
     }

@@ -26,7 +26,14 @@ message TransferReq {
     required uint32 amount   = 3;
 }
 
+message TxId {
+    required uint32 serverId     = 1;
+    required uint32 serialNumber = 2;
+}
+
 message Tx {
+    required TxId id = 10;
+
     oneof txType {
         CreateAccountReq  create      = 1;
         DeleteAccountReq  delete      = 2;
