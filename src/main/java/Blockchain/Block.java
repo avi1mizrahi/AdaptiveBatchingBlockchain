@@ -1,9 +1,11 @@
 package Blockchain;
 
 import Blockchain.Transaction.Transaction;
+import ServerCommunication.BlockId;
 import ServerCommunication.BlockMsg;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -30,24 +32,40 @@ class Block {
         }
     }
 
+    private final BlockId       blockId;
     private final List<TxEntry> txs;
 
-    Block(Stream<Transaction> txs) {
+    Block(BlockId blockId, Stream<Transaction> txs) {
+        this.blockId = blockId;
         this.txs = txs.map(TxEntry::new).collect(Collectors.toUnmodifiableList());
     }
 
     static Block from(BlockMsg blockMsg) {
-        return new Block(blockMsg.getTxsList().stream().map(Transaction::from));
+        return new Block(blockMsg.getId(), blockMsg.getTxsList().stream().map(Transaction::from));
     }
 
     void applyTo(Ledger ledger) {
-        txs.forEach(entry -> {
-            entry.result = entry.tx.process(ledger);
-        });
+        txs.forEach(entry -> entry.result = entry.tx.process(ledger));
     }
 
-    List<Transaction.Result> getResults() {
-        return txs.stream().map(TxEntry::getResult).collect(Collectors.toList());
+    public static class TxStatus {
+        private TxStatus(TxId txId, Transaction.Result result) {
+            this.txId = txId;
+            this.result = result;
+        }
+
+        public TxId               txId;
+        public Transaction.Result result;
+    }
+
+    List<TxStatus> getResults() {
+        List<TxStatus> list = new ArrayList<>();
+
+        for (int i = 0; i < txs.size(); i++) {
+            list.add(new TxStatus(new TxId(blockId.getServerId(), blockId.getSerialNumber(), i),
+                                  txs.get(i).getResult()));
+        }
+        return list;
     }
 
     void addToBlockMsg(BlockMsg.Builder blockBuilder) {
@@ -104,7 +122,8 @@ class BlockBuilder {
             txIdx = 0;
         }
 
-        return new Block(oldList.stream());
+        return new Block(BlockId.newBuilder().setServerId(id).setSerialNumber(blockIdx).build(),
+                         oldList.stream());
     }
 
 }

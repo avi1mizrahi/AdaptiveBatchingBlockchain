@@ -66,12 +66,10 @@ class Ledger {
         }
     }
 
-    List<Transaction.Result> apply(Block block) {
+    void apply(Block block) {
         try (var ignored = CriticalSection.start(lock.writeLock())) {
             block.applyTo(this);
             chain.add(block);
         }
-
-        return block.getResults();
     }
 }
