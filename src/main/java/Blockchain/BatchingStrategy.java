@@ -1,5 +1,6 @@
 package Blockchain;
 
+import java.io.Closeable;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -23,6 +24,24 @@ abstract class BatchingStrategy {
     abstract void start();
 
     abstract void shutdown();
+
+    public RequestWindow createRequestWindow() {
+        return new RequestWindow(this);
+    }
+
+    static class RequestWindow implements Closeable {
+        private final BatchingStrategy strategy;
+
+        private RequestWindow(BatchingStrategy strategy) {
+            this.strategy = strategy;
+            strategy.onRequestBegin();
+        }
+
+        @Override
+        public void close() {
+            strategy.onRequestEnd();
+        }
+    }
 }
 
 class TimedAdaptiveBatching extends BatchingStrategy {
