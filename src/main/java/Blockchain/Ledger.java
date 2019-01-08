@@ -1,5 +1,7 @@
 package Blockchain;
 
+import Blockchain.Transaction.Transaction;
+
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
@@ -9,13 +11,14 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @ThreadSafe
+public
 class Ledger {
     private final ReadWriteLock             lock   = new ReentrantReadWriteLock();
     private final List<Block>               chain  = new ArrayList<>();
     private final HashMap<Account, Integer> data   = new HashMap<>();
     private       int                       lastId = 0;
 
-    Account newAccount() {
+    public Account newAccount() {
         try (var ignored = CriticalSection.start(lock.writeLock())) {
             int id      = ++lastId;
             var account = Account.from(id);
@@ -25,11 +28,11 @@ class Ledger {
         }
     }
 
-    boolean deleteAccount(Account account) {
+    public boolean deleteAccount(Account account) {
         return null != data.remove(account);
     }
 
-    boolean add(Account account, int amount) {
+    public boolean add(Account account, int amount) {
         try (var ignored = CriticalSection.start(lock.writeLock())) {
             if (amount < 0) return false;
             return null != data.computeIfPresent(account,
@@ -39,7 +42,7 @@ class Ledger {
 
     }
 
-    boolean subtract(Account account, int amount) {
+    public boolean subtract(Account account, int amount) {
         try (var ignored = CriticalSection.start(lock.writeLock())) {
             var ref = new Object() {
                 boolean executed = false;

@@ -1,5 +1,6 @@
 package Blockchain;
 
+import Blockchain.Transaction.Transaction;
 import ServerCommunication.BlockMsg;
 import org.jetbrains.annotations.Nullable;
 

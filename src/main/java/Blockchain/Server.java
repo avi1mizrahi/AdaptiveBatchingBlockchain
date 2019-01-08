@@ -1,5 +1,6 @@
 package Blockchain;
 
+import Blockchain.Transaction.*;
 import ServerCommunication.*;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;

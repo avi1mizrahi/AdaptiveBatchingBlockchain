@@ -10,11 +10,11 @@ public class Account {
         this.id = id;
     }
 
-    static Account from(int id) {
+    public static Account from(int id) {
         return new Account(id);
     }
 
-    int getId() {
+    public int getId() {
         return id;
     }
 
