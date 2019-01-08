@@ -42,14 +42,14 @@ public class ClientController {
         return Application.server.transfer(transfer.getFrom(), transfer.getTo(), transfer.getAmount());
     }
 
-    @GetMapping("/newAccounts/{serverId}/{txId}")
-    Account getAccountStatus(@PathVariable int serverId, @PathVariable int txId) {
-        Transaction.Result status = Application.server.getTxStatus(new TxId(serverId, txId));
+    @GetMapping("/newAccounts/{txId}")
+    Account getAccountStatus(@PathVariable String txId) {
+        Transaction.Result status = Application.server.getTxStatus(TxId.from(txId));
         return ((NewAccountTx.Result)status).getNewAccount();
     }
 
-    @GetMapping("/txs/{serverId}/{txId}")
-    Boolean getTxStatus(@PathVariable int serverId, @PathVariable int txId) {
-        return Application.server.getTxStatus(new TxId(serverId, txId)).isCommitted();
+    @GetMapping("/txs/{txId}")
+    Boolean getTxStatus(@PathVariable int serverId, @PathVariable String txId) {
+        return Application.server.getTxStatus(TxId.from(txId)).isCommitted();
     }
 }

@@ -26,7 +26,6 @@ public class Server {
     private final io.grpc.Server                       serverListener;
     private final ZooKeeperClient                      zkClient;
     private final InetSocketAddress                    address;
-    private       int                                  myBlockNum  = 0; // can be owned by blockBuilder
 
     Server(int id, int serverPort, Duration blockWindow) {
         this.id = id;
@@ -119,7 +118,7 @@ public class Server {
 
         var blockId = BlockId.newBuilder()
                              .setServerId(id)
-                             .setSerialNumber(myBlockNum++)
+                             .setSerialNumber(0 /*TODO!!!!!!!!!!*/)
                              .build();
         blockMsgBuilder.setId(blockId);
 

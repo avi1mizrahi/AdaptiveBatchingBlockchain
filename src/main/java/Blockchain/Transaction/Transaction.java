@@ -2,12 +2,9 @@ package Blockchain.Transaction;
 
 import Blockchain.Account;
 import Blockchain.Ledger;
-import Blockchain.TxId;
 import ServerCommunication.Tx;
 
 public abstract class Transaction {
-    private TxId id;
-
     // This is ugly
     public static Transaction from(Tx tx) {
         switch (tx.getTxTypeCase()) {
@@ -31,10 +28,6 @@ public abstract class Transaction {
         return null;
     }
 
-    public void setId(TxId id) {
-        this.id = id;
-    }
-
     public Result process(Ledger ledger) {
         return doYourThing(ledger);
     }
@@ -43,7 +36,6 @@ public abstract class Transaction {
 
     public final Tx toTxMsg() {
         var builder = Tx.newBuilder();
-        builder.getIdBuilder().setSerialNumber(id.getTxId()).setServerId(id.getServerId());
         addToMsg(builder);
         return builder.build();
     }

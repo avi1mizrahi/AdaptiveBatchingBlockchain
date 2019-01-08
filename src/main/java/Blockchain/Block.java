@@ -6,7 +6,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -70,10 +69,12 @@ class Block {
 }
 
 class BlockBuilder {
-    private final ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
     private       ConcurrentLinkedQueue<Transaction> txs           = new ConcurrentLinkedQueue<>();
-    private final AtomicInteger                      myTxNum       = new AtomicInteger(0);
-    private final int                                id;
+    private final ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
+
+    private final int id;
+    private       int blockIdx = 0;
+    private       int txIdx    = 0;
 
     BlockBuilder(int id) {
         this.id = id;
@@ -84,11 +85,11 @@ class BlockBuilder {
     }
 
     TxId append(Transaction tx) {
-        TxId txId = new TxId(this.id, myTxNum.incrementAndGet());
+        TxId txId;
         try (var ignored = CriticalSection.start(readWriteLock.readLock())) {
+            txId = new TxId(this.id, blockIdx, txIdx++);
             txs.add(tx);
         }
-        tx.setId(txId);
         return txId;
     }
 
@@ -99,6 +100,8 @@ class BlockBuilder {
         try (var ignored = CriticalSection.start(readWriteLock.writeLock())) {
             oldList = txs;
             txs = newList;
+            blockIdx++;
+            txIdx = 0;
         }
 
         return new Block(oldList.stream());
