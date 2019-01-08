@@ -226,11 +226,33 @@ public class Server {
         }
     }
 
-    public Transaction.Result getTxStatus(TxId txId) {
+    public class TxResult {
+        private final Account account;
+        private final Boolean isCommitted;
+
+        public TxResult(Account account, Boolean isCommitted) {
+            this.account = account;
+            this.isCommitted = isCommitted;
+        }
+
+        public Account getAccount() {
+            return account;
+        }
+
+        public boolean getIsCommitted() {
+            return isCommitted;
+        }
+    }
+
+    public TxResult getTxStatus(TxId txId) {
         Transaction.Result result = results.remove(txId);
         if (result == null) {
             //TODO: check in the blockchain
         }
-        return result;
+        assert result != null;
+        if (result.getClass().equals(NewAccountTx.Result.class)) {
+            return new TxResult(((NewAccountTx.Result) result).getNewAccount(), null);
+        }
+        return new TxResult(null, result.isCommitted());
     }
 }

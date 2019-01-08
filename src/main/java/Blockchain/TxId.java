@@ -14,11 +14,11 @@ public class TxId {
         this.txId = txId;
     }
 
-    int getServerId() {
+    public int getServerId() {
         return serverId;
     }
 
-    int getTxId() {
+    public int getTxId() {
         return txId;
     }
 }

@@ -1,5 +1,6 @@
 package App;
 
+import Blockchain.Account;
 import Blockchain.TxId;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -36,12 +37,12 @@ public class ClientController {
             this.amount = amount;
         }
 
-        int getAmount() {
+        public int getAmount() {
             return amount;
         }
     }
 
-    @PutMapping("/accounts/{id}/addamount")
+    @PutMapping("/accounts/{id}/addAmount")
     TxId addAmount(@RequestBody Amount amount, @PathVariable int id) {
         return Application.server.addAmount(id, amount.getAmount());
     }
@@ -59,15 +60,15 @@ public class ClientController {
             this.amount = amount;
         }
 
-        int getFrom() {
+        public int getFrom() {
             return from;
         }
 
-        int getTo() {
+        public int getTo() {
             return to;
         }
 
-        int getAmount() {
+        public int getAmount() {
             return amount;
         }
     }
@@ -77,9 +78,13 @@ public class ClientController {
         return Application.server.transfer(transfer.getFrom(), transfer.getTo(), transfer.getAmount());
     }
 
+    @GetMapping("/newAccounts/{serverId}/{txId}")
+    Account getAccountStatus(@PathVariable int serverId, @PathVariable int txId) {
+        return Application.server.getTxStatus(new TxId(serverId, txId)).getAccount();
+    }
+
     @GetMapping("/txs/{serverId}/{txId}")
-    void getTxStatus(@PathVariable int serverId, @PathVariable int txId) {
-        Application.server.getTxStatus(new TxId(serverId, txId));
-        //TODO:
+    Boolean getTxStatus(@PathVariable int serverId, @PathVariable int txId) {
+        return Application.server.getTxStatus(new TxId(serverId, txId)).getIsCommitted();
     }
 }
