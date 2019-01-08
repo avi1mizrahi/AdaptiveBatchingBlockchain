@@ -1,11 +1,11 @@
 package App;
 
 import Blockchain.Account;
+import Blockchain.Amount;
 import Blockchain.Transaction.NewAccountTx;
 import Blockchain.Transaction.Transaction;
+import Blockchain.Transfer;
 import Blockchain.TxId;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
 import org.apache.log4j.Logger;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,47 +32,9 @@ public class ClientController {
         return new Amount(Application.server.getAmount(id));
     }
 
-    @Data
-    public class Amount {
-        private final int amount;
-        Amount(@JsonProperty(value = "amount", required = true) int amount) {
-            this.amount = amount;
-        }
-
-        public int getAmount() {
-            return amount;
-        }
-    }
-
     @PutMapping("/accounts/{id}/addAmount")
     TxId addAmount(@RequestBody Amount amount, @PathVariable int id) {
         return Application.server.addAmount(id, amount.getAmount());
-    }
-
-    @Data
-    public class Transfer {
-        private final int from;
-        private final int to;
-        private final int amount;
-        Transfer(@JsonProperty(value = "from", required = true) int from,
-                 @JsonProperty(value = "to", required = true) int to,
-                 @JsonProperty(value = "amount", required = true) int amount) {
-            this.from = from;
-            this.to = to;
-            this.amount = amount;
-        }
-
-        public int getFrom() {
-            return from;
-        }
-
-        public int getTo() {
-            return to;
-        }
-
-        public int getAmount() {
-            return amount;
-        }
     }
 
     @PostMapping("/transfers")
