@@ -25,44 +25,51 @@ public class SpringTest {
 
     @Test
     public void basicTest() {
-        TxId tx1 = this.restTemplate.postForObject("/accounts", "",TxId.class);
-        TxId tx2 = this.restTemplate.postForObject("/accounts", "",TxId.class);
-        TxId tx3 = this.restTemplate.postForObject("/accounts", "",TxId.class);
-        TxId tx4 = this.restTemplate.postForObject("/accounts", "",TxId.class);
-        Account account1 = this.restTemplate.getForObject(String.format("/newAccounts/%d/%d", tx1.getServerId(), tx1.getTxId()), Account.class);
-        Account account2 = this.restTemplate.getForObject(String.format("/newAccounts/%d/%d", tx2.getServerId(), tx2.getTxId()), Account.class);
-        Account account3 = this.restTemplate.getForObject(String.format("/newAccounts/%d/%d", tx3.getServerId(), tx3.getTxId()), Account.class);
-        Account account4 = this.restTemplate.getForObject(String.format("/newAccounts/%d/%d", tx4.getServerId(), tx4.getTxId()), Account.class);
+        TxId tx1 = restTemplate.postForObject("/accounts", "",TxId.class);
+        TxId tx2 = restTemplate.postForObject("/accounts", "",TxId.class);
+        TxId tx3 = restTemplate.postForObject("/accounts", "",TxId.class);
+        TxId tx4 = restTemplate.postForObject("/accounts", "",TxId.class);
 
-        this.restTemplate.put(String.format("/accounts/%d/addAmount", account1.getId()), new Amount(100));
-        this.restTemplate.put(String.format("/accounts/%d/addAmount", account3.getId()), new Amount(100));
+        Account account1;
+        Account account2;
+        Account account3;
+        Account account4;
+        do {
+            account1 = restTemplate.getForObject(String.format("/newAccounts/%s", tx1.toString()), Account.class);
+            account2 = restTemplate.getForObject(String.format("/newAccounts/%s", tx2.toString()), Account.class);
+            account3 = restTemplate.getForObject(String.format("/newAccounts/%s", tx3.toString()), Account.class);
+            account4 = restTemplate.getForObject(String.format("/newAccounts/%s", tx4.toString()), Account.class);
+        } while (account1 == null || account2 == null || account3 == null || account4 == null);
+
+        restTemplate.put(String.format("/accounts/%d/addAmount", account1.getId()), new Amount(100));
+        restTemplate.put(String.format("/accounts/%d/addAmount", account3.getId()), new Amount(100));
 
 
-        TxId transfer1 = this.restTemplate.postForObject("/transfers", new Transfer(account1.getId(), account2.getId(), 50), TxId.class);
-        TxId transfer2 = this.restTemplate.postForObject("/transfers", new Transfer(account1.getId(), account3.getId(), 50), TxId.class);
+        TxId transfer1 = restTemplate.postForObject("/transfers", new Transfer(account1.getId(), account2.getId(), 50), TxId.class);
+        TxId transfer2 = restTemplate.postForObject("/transfers", new Transfer(account1.getId(), account3.getId(), 50), TxId.class);
 
-        Amount amount1 = this.restTemplate.getForObject(String.format("/accounts/%d/amount", account1.getId()), Amount.class);
-        Amount amount2 = this.restTemplate.getForObject(String.format("/accounts/%d/amount", account2.getId()), Amount.class);
-        Amount amount3 = this.restTemplate.getForObject(String.format("/accounts/%d/amount", account3.getId()), Amount.class);
-        Amount amount4 = this.restTemplate.getForObject(String.format("/accounts/%d/amount", account4.getId()), Amount.class);
+        Amount amount1 = restTemplate.getForObject(String.format("/accounts/%d/amount", account1.getId()), Amount.class);
+        Amount amount2 = restTemplate.getForObject(String.format("/accounts/%d/amount", account2.getId()), Amount.class);
+        Amount amount3 = restTemplate.getForObject(String.format("/accounts/%d/amount", account3.getId()), Amount.class);
+        Amount amount4 = restTemplate.getForObject(String.format("/accounts/%d/amount", account4.getId()), Amount.class);
 
         assertEquals(amount1.getAmount(), 0);
         assertEquals(amount2.getAmount(), 50);
         assertEquals(amount3.getAmount(), 150);
         assertEquals(amount4.getAmount(), 0);
 
-        TxId transfer3 = this.restTemplate.postForObject("/transfers", new Transfer(account3.getId(), account1.getId(), 150), TxId.class);
+        TxId transfer3 = restTemplate.postForObject("/transfers", new Transfer(account3.getId(), account1.getId(), 150), TxId.class);
 
-        amount1 = this.restTemplate.getForObject(String.format("/accounts/%d/amount", account1.getId()), Amount.class);
-        amount3 = this.restTemplate.getForObject(String.format("/accounts/%d/amount", account3.getId()), Amount.class);
+        amount1 = restTemplate.getForObject(String.format("/accounts/%d/amount", account1.getId()), Amount.class);
+        amount3 = restTemplate.getForObject(String.format("/accounts/%d/amount", account3.getId()), Amount.class);
 
         assertEquals(amount1.getAmount(), 150);
         assertEquals(amount3.getAmount(), 0);
 
-        this.restTemplate.delete(String.format("/accounts/%d", account1.getId()));
-        this.restTemplate.delete(String.format("/accounts/%d", account2.getId()));
-        this.restTemplate.delete(String.format("/accounts/%d", account3.getId()));
-        this.restTemplate.delete(String.format("/accounts/%d", account4.getId()));
+        restTemplate.delete(String.format("/accounts/%d", account1.getId()));
+        restTemplate.delete(String.format("/accounts/%d", account2.getId()));
+        restTemplate.delete(String.format("/accounts/%d", account3.getId()));
+        restTemplate.delete(String.format("/accounts/%d", account4.getId()));
     }
 
 }

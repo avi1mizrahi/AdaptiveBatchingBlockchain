@@ -45,6 +45,7 @@ public class ClientController {
     @GetMapping("/newAccounts/{txId}")
     Account getAccountStatus(@PathVariable String txId) {
         Transaction.Result status = Application.server.getTxStatus(TxId.from(txId));
+        if (status == null) return null;
         return ((NewAccountTx.Result)status).getNewAccount();
     }
 
