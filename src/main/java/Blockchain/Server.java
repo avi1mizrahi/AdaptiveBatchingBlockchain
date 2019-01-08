@@ -15,17 +15,23 @@ import java.util.stream.Stream;
 
 
 public class Server {
-    private final BatchingStrategy                     batchingStrategy;
-    private final int                                  id;
-    private final Ledger                               ledger      = new Ledger();
-    private final Set<Integer>                         lostPeerIds = new HashSet<>();// TODO: protect
-    private final Map<Integer, PeerServer>             peers       = new HashMap<>();// TODO: protect
-    private final ConcurrentHashMap<BlockId, BlockMsg> pending     = new ConcurrentHashMap<>();
-    private final BoundedMap<TxId, Transaction.Result> results     = new BoundedMap<>(1 << 15);
-    private final BlockBuilder                         blockBuilder;
-    private final io.grpc.Server                       serverListener;
-    private final ZooKeeperClient                      zkClient;
-    private final InetSocketAddress                    address;
+    private final int               id;
+    private final InetSocketAddress address;
+
+    private final BatchingStrategy batchingStrategy;
+    private final BlockBuilder     blockBuilder;
+    private final Ledger           ledger = new Ledger();
+
+    private final ConcurrentHashMap<BlockId, BlockMsg> pending = new ConcurrentHashMap<>();
+    private final BoundedMap<TxId, Transaction.Result> results = new BoundedMap<>(1 << 15);
+
+    private final Set<Integer>             lostPeerIds       = new HashSet<>();// TODO: protect
+    private final Map<Integer, PeerServer> peers             = new HashMap<>();// TODO: protect
+    private final Map<Integer, Integer>    lastChainedByPeer = new HashMap<>();// TODO: protect
+
+    private final io.grpc.Server  serverListener;
+    private final ZooKeeperClient zkClient;
+
 
     Server(int id, int serverPort, Duration blockWindow) {
         this.id = id;
@@ -82,6 +88,7 @@ public class Server {
 
         // add new peers
         for (Integer serverId : newView) {
+            lastChainedByPeer.putIfAbsent(serverId, -1);
             peers.computeIfAbsent(serverId,
                                   id -> new PeerServer(zkClient.getServerMembershipData(id)));
         }
@@ -105,42 +112,47 @@ public class Server {
     }
 
     void onBlockChained(BlockId blockId) {
-        var blockMsg = pending.remove(blockId);
-        assert blockMsg != null;//TODO remove, what if it's not here yet? need to pull
+        Integer blockIdx = lastChainedByPeer.compute(blockId.getServerId(), (peer, idx) -> {
+            int newIdx = blockId.getSerialNumber();
+            if (idx + 1 != newIdx)
+                return idx;
+            return newIdx;
+        });
 
-        //TODO: check that it's new
-        ledger.apply(Block.from(blockMsg));//TODO: update results
+        if (blockIdx != blockId.getSerialNumber()) // TODO: can we do better?
+            throw new RuntimeException("Missing Block! got " + blockId +
+                                               " but last chained is " + blockIdx);
+
+        var blockMsg = pending.remove(blockId);
+        if (blockMsg == null)
+            throw new RuntimeException("Block " + blockId +
+                                               " wasn't received yet");//TODO remove, what if it's not here yet? need to pull
+
+        Block block = Block.from(blockMsg);
+        ledger.apply(block);
+        results.putAll(block.getResults());
+
+        System.out.println("SERVER: appended!");
+        System.out.println(block);
     }
 
-    private BlockId pushBlock(@NotNull Block block) {
-        var blockMsgBuilder = BlockMsg.newBuilder();
-        block.addToBlockMsg(blockMsgBuilder);
+    private void pushBlock(@NotNull Block block) {
 
-        var blockId = BlockId.newBuilder()
-                             .setServerId(id)
-                             .setSerialNumber(0 /*TODO!!!!!!!!!!*/)
-                             .build();
-        blockMsgBuilder.setId(blockId);
-
-        BlockMsg blockMsg = blockMsgBuilder.build();
+        BlockMsg blockMsg = block.toBlockMsg();
         //TODO: send this to others
         //TODO: wait for more than half
-
-        return blockId;
+        pending.putIfAbsent(block.getId(), blockMsg);
     }
 
     private void trySealBlock() {
         if (blockBuilder.isEmpty()) {
             return;
         }
-        Block block   = blockBuilder.seal();
-        var   blockId = pushBlock(block);
-        zkClient.postBlock(blockId);
-        // TODO: should apply only after we sure it is the latest, try to bring the rest if not
-        ledger.apply(block);
-        System.out.println("SERVER: appended!");
-        System.out.println(block);
+        Block block = blockBuilder.seal();
 
+        pushBlock(block);
+        zkClient.postBlock(block.getId());
+        // TODO: should apply only after we sure it is the latest, try to bring the rest if not
     }
 
     int getId() {

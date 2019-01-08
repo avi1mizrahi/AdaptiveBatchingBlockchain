@@ -3,10 +3,12 @@ package Blockchain;
 import Blockchain.Transaction.Transaction;
 import ServerCommunication.BlockId;
 import ServerCommunication.BlockMsg;
+import ServerCommunication.Tx;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -30,10 +32,27 @@ class Block {
         Transaction getTx() {
             return tx;
         }
+
+        @Override
+        public String toString() {
+            char status;
+            if (result == null) {
+                status = ' ';
+            } else if (result.isCommitted()) {
+                status = 'V';
+            } else {
+                status = 'X';
+            }
+            return String.format("[%c]%s", status, tx.toString());
+        }
     }
 
     private final BlockId       blockId;
     private final List<TxEntry> txs;
+
+    public BlockId getId() {
+        return blockId;
+    }
 
     Block(BlockId blockId, Stream<Transaction> txs) {
         this.blockId = blockId;
@@ -48,32 +67,22 @@ class Block {
         txs.forEach(entry -> entry.result = entry.tx.process(ledger));
     }
 
-    public static class TxStatus {
-        private TxStatus(TxId txId, Transaction.Result result) {
-            this.txId = txId;
-            this.result = result;
-        }
-
-        public TxId               txId;
-        public Transaction.Result result;
-    }
-
-    List<TxStatus> getResults() {
-        List<TxStatus> list = new ArrayList<>();
+    Map<TxId, Transaction.Result> getResults() {
+        HashMap<TxId, Transaction.Result> map = new HashMap<>();
 
         for (int i = 0; i < txs.size(); i++) {
-            list.add(new TxStatus(new TxId(blockId.getServerId(), blockId.getSerialNumber(), i),
-                                  txs.get(i).getResult()));
+            map.put(new TxId(blockId.getServerId(), blockId.getSerialNumber(), i),
+                    txs.get(i).getResult());
         }
-        return list;
+        return map;
     }
 
-    void addToBlockMsg(BlockMsg.Builder blockBuilder) {
-        var txMsgs = txs.stream()
-                        .map(TxEntry::getTx)
-                        .map(Transaction::toTxMsg)
-                        .collect(Collectors.toList());
-        blockBuilder.addAllTxs(txMsgs);
+    BlockMsg toBlockMsg() {
+        Stream<Tx> txMsgs = txs.stream()
+                               .map(TxEntry::getTx)
+                               .map(Transaction::toTxMsg);
+
+        return BlockMsg.newBuilder().setId(blockId).addAllTxs(txMsgs::iterator).build();
     }
 
     @Override
