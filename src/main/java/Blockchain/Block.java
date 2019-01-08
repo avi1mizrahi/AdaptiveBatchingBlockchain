@@ -1,8 +1,8 @@
 package Blockchain;
 
 import ServerCommunication.BlockMsg;
+import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -12,38 +12,62 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 class Block {
-    private final List<Transaction> txs;
+    private class TxEntry {
+        private final Transaction        tx;
+        private       Transaction.Result result = null;
+
+        TxEntry(Transaction tx) {
+            this.tx = tx;
+        }
+
+        @Nullable
+        Transaction.Result getResult() {
+            return result;
+        }
+
+        Transaction getTx() {
+            return tx;
+        }
+    }
+
+    private final List<TxEntry> txs;
 
     Block(Stream<Transaction> txs) {
-        this.txs = txs.collect(Collectors.toUnmodifiableList());
+        this.txs = txs.map(TxEntry::new).collect(Collectors.toUnmodifiableList());
     }
 
     static Block from(BlockMsg blockMsg) {
         return new Block(blockMsg.getTxsList().stream().map(Transaction::from));
     }
 
-    List<Transaction.Result> applyTo(Ledger ledger) {
-        return txs.stream()
-                  .map(transaction -> transaction.process(ledger))
-                  .collect(Collectors.toList());
+    void applyTo(Ledger ledger) {
+        txs.forEach(entry -> {
+            entry.result = entry.tx.process(ledger);
+        });
+    }
+
+    List<Transaction.Result> getResults() {
+        return txs.stream().map(TxEntry::getResult).collect(Collectors.toList());
+    }
+
+    void addToBlockMsg(BlockMsg.Builder blockBuilder) {
+        var txMsgs = txs.stream()
+                        .map(TxEntry::getTx)
+                        .map(Transaction::toTxMsg)
+                        .collect(Collectors.toList());
+        blockBuilder.addAllTxs(txMsgs);
     }
 
     @Override
     public String toString() {
         return txs.stream()
-                  .map(Transaction::toString)
+                  .map(TxEntry::toString)
                   .collect(Collectors.joining("\n",
                                               "+++BLOCK+++ [size=" + txs.size() + "]\n",
                                               "\n---BLOCK---"));
     }
-
-    void addToBlockMsg(BlockMsg.Builder blockBuilder) {
-        var txMsgs = txs.stream().map(Transaction::toTxMsg).collect(Collectors.toList());
-        blockBuilder.addAllTxs(txMsgs);
-    }
 }
 
-@ThreadSafe
 class BlockBuilder {
     private final ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
     private       ConcurrentLinkedQueue<Transaction> txs           = new ConcurrentLinkedQueue<>();
