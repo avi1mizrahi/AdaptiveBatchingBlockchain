@@ -16,15 +16,16 @@ import java.util.stream.Stream;
 public class Server {
     private final BatchingStrategy                     batchingStrategy;
     private final int                                  id;
-    private final Ledger                               ledger       = new Ledger();
-    private final Set<Integer>                         lostPeerIds  = new HashSet<>();// TODO: protect
-    private final Map<Integer, PeerServer>             peers        = new HashMap<>();// TODO: protect
-    private final ConcurrentHashMap<BlockId, BlockMsg> pending      = new ConcurrentHashMap<>();
+    private final Ledger                               ledger      = new Ledger();
+    private final Set<Integer>                         lostPeerIds = new HashSet<>();// TODO: protect
+    private final Map<Integer, PeerServer>             peers       = new HashMap<>();// TODO: protect
+    private final ConcurrentHashMap<BlockId, BlockMsg> pending     = new ConcurrentHashMap<>();
+    private final BoundedMap<TxId, Transaction.Result> results     = new BoundedMap<>(1 << 15);
     private final BlockBuilder                         blockBuilder;
     private final io.grpc.Server                       serverListener;
     private final ZooKeeperClient                      zkClient;
     private final InetSocketAddress                    address;
-    private       int                                  myBlockNum   = 0; // can be owned by blockBuilder
+    private       int                                  myBlockNum  = 0; // can be owned by blockBuilder
 
     Server(int id, int serverPort, Duration blockWindow) {
         this.id = id;
@@ -108,7 +109,7 @@ public class Server {
         assert blockMsg != null;//TODO remove, what if it's not here yet? need to pull
 
         //TODO: check that it's new
-        ledger.apply(Block.from(blockMsg));
+        ledger.apply(Block.from(blockMsg));//TODO: update results
     }
 
     private BlockId pushBlock(@NotNull Block block) {
@@ -225,7 +226,11 @@ public class Server {
         }
     }
 
-    public void getTxStatus(int serverId, int txId) {
-        //TODO: go to transactions and check
+    public Transaction.Result getTxStatus(TxId txId) {
+        Transaction.Result result = results.remove(txId);
+        if (result == null) {
+            //TODO: check in the blockchain
+        }
+        return result;
     }
 }

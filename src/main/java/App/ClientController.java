@@ -79,7 +79,7 @@ public class ClientController {
 
     @GetMapping("/txs/{serverId}/{txId}")
     void getTxStatus(@PathVariable int serverId, @PathVariable int txId) {
-        Application.server.getTxStatus(serverId, txId);
+        Application.server.getTxStatus(new TxId(serverId, txId));
         //TODO:
     }
 }

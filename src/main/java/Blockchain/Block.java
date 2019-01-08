@@ -22,8 +22,10 @@ class Block {
         return new Block(blockMsg.getTxsList().stream().map(Transaction::from));
     }
 
-    void applyTo(Ledger ledger) {
-        txs.forEach(transaction -> transaction.process(ledger));
+    List<Transaction.Result> applyTo(Ledger ledger) {
+        return txs.stream()
+                  .map(transaction -> transaction.process(ledger))
+                  .collect(Collectors.toList());
     }
 
     @Override
