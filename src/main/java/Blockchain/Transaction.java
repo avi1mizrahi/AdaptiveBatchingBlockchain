@@ -6,10 +6,6 @@ import ServerCommunication.Tx;
 abstract class Transaction {
     private TxId id;
 
-    void setId(TxId id) {
-        this.id = id;
-    }
-
     // This is ugly
     static Transaction from(Tx tx) {
         switch (tx.getTxTypeCase()) {
@@ -33,11 +29,15 @@ abstract class Transaction {
         return null;
     }
 
-    public void process(Ledger ledger) {
-        doYourThing(ledger);
+    void setId(TxId id) {
+        this.id = id;
     }
 
-    abstract void doYourThing(Ledger ledger);
+    public Result process(Ledger ledger) {
+        return doYourThing(ledger);
+    }
+
+    abstract Result doYourThing(Ledger ledger);
 
     final Tx toTxMsg() {
         var builder = Tx.newBuilder();
@@ -52,17 +52,21 @@ abstract class Transaction {
     public String toString() {
         return "[TX]:";
     }
+
+    static class Result {
+        boolean isCommitted() {
+            return true;
+        }
+    }
 }
 
 class NewAccountTx extends Transaction {
-    NewAccountTx() {
-    }
-
     @Override
-    @SuppressWarnings("unchecked")
-    void doYourThing(Ledger ledger) {
+    Transaction.Result doYourThing(Ledger ledger) {
         var account = ledger.newAccount();
         System.out.println("SERVER: Created " + account);
+
+        return new Result(account);
     }
 
     @Override
@@ -74,6 +78,18 @@ class NewAccountTx extends Transaction {
     public String toString() {
         return super.toString() + "New";
     }
+
+    static class Result extends Transaction.Result {
+        private Account newAccount;
+
+        private Result(Account newAccount) {
+            this.newAccount = newAccount;
+        }
+
+        public Account getNewAccount() {
+            return newAccount;
+        }
+    }
 }
 
 class DeleteAccountTx extends Transaction {
@@ -84,10 +100,10 @@ class DeleteAccountTx extends Transaction {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    void doYourThing(Ledger ledger) {
+    Transaction.Result doYourThing(Ledger ledger) {
         ledger.deleteAccount(account);
 
+        return new Result();
     }
 
     @Override
@@ -98,6 +114,9 @@ class DeleteAccountTx extends Transaction {
     @Override
     public String toString() {
         return super.toString() + "Delete[" + account + "]";
+    }
+
+    static class Result extends Transaction.Result {
     }
 }
 
@@ -111,10 +130,10 @@ class DepositTx extends Transaction {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    void doYourThing(Ledger ledger) {
+    Transaction.Result doYourThing(Ledger ledger) {
         boolean success = ledger.add(account, amount);
 
+        return new Result(success);
     }
 
     @Override
@@ -125,6 +144,19 @@ class DepositTx extends Transaction {
     @Override
     public String toString() {
         return super.toString() + "Deposit[" + account + "]+" + amount;
+    }
+
+    static class Result extends Transaction.Result {
+        private boolean committed;
+
+        Result(boolean committed) {
+            this.committed = committed;
+        }
+
+        @Override
+        public boolean isCommitted() {
+            return committed;
+        }
     }
 }
 
@@ -140,10 +172,10 @@ class TransferTx extends Transaction {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    void doYourThing(Ledger ledger) {
+    Transaction.Result doYourThing(Ledger ledger) {
         boolean success = transfer(ledger);
 
+        return new Result(success);
     }
 
     @Override
@@ -167,5 +199,18 @@ class TransferTx extends Transaction {
             ledger.add(from, amount);//return the stolen money
         }
         return false;
+    }
+
+    static class Result extends Transaction.Result {
+        private boolean committed;
+
+        Result(boolean committed) {
+            this.committed = committed;
+        }
+
+        @Override
+        public boolean isCommitted() {
+            return committed;
+        }
     }
 }

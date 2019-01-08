@@ -7,7 +7,8 @@ import lombok.Data;
 public class TxId {
     private final int serverId;
     private final int txId;
-    TxId(@JsonProperty(value = "serverId", required = true) int serverId,
+
+    public TxId(@JsonProperty(value = "serverId", required = true) int serverId,
          @JsonProperty(value = "txId", required = true) int txId) {
         this.serverId = serverId;
         this.txId = txId;
