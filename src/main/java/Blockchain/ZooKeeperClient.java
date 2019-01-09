@@ -109,7 +109,11 @@ public class ZooKeeperClient implements Watcher {
     }
 
     private BlockId getBlockId(int blockIdx) {
-        String blockPath = blockchainRootPath + "/" + String.format("%010d", blockIdx);
+        return getBlockId(String.format("%010d", blockIdx));
+    }
+
+    private BlockId getBlockId(String blockIdx) {
+        String blockPath = blockchainRootPath + "/" + blockIdx;
         try {
             return BlockId.parseFrom(getData(blockPath).getBytes());
         } catch (InvalidProtocolBufferException ignored) {
@@ -136,14 +140,20 @@ public class ZooKeeperClient implements Watcher {
 
     void postBlock(BlockId blockId) {
         // Try to create the znode of this sever under /membership.
-        try {
-            zk.create(blockchainRootPath + "/",
-                      blockId.toByteArray(),
-                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
-                      CreateMode.PERSISTENT_SEQUENTIAL);
-        } catch (KeeperException | InterruptedException e) {
-            e.printStackTrace();
-        }
+        zk.create(blockchainRootPath + "/",
+                  blockId.toByteArray(),
+                  ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                  CreateMode.PERSISTENT_SEQUENTIAL,
+                  (rc, path, ctx, name) -> {
+                      if (rc != KeeperException.Code.OK.intValue()) {
+                          System.exit(-2);
+                      }
+
+                      String idx = name.substring(blockchainRootPath.length() + 1);
+                      server.onBlockChained(getBlockId(idx),
+                                            Integer.valueOf(idx));
+                  },
+                  null);
     }
 
     private void updateBlockchain() throws KeeperException, InterruptedException {
@@ -154,7 +164,7 @@ public class ZooKeeperClient implements Watcher {
               .filter(blockIdx -> blockIdx > lastSeenBlock)
               .sorted()
               .forEachOrdered(blockIdx -> {
-                  server.onBlockChained(getBlockId(blockIdx));
+                  server.onBlockChained(getBlockId(blockIdx), blockIdx);
                   lastSeenBlock = blockIdx;
               });
         }

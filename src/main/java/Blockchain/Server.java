@@ -27,7 +27,6 @@ public class Server {
 
     private final Set<Integer>             lostPeerIds       = new HashSet<>();// TODO: protect
     private final Map<Integer, PeerServer> peers             = new HashMap<>();// TODO: protect
-    private final Map<Integer, Integer>    lastChainedByPeer = new HashMap<>();// TODO: protect
 
     private final io.grpc.Server  serverListener;
     private final ZooKeeperClient zkClient;
@@ -93,7 +92,6 @@ public class Server {
 
         // add new peers
         for (Integer serverId : newView) {
-            lastChainedByPeer.putIfAbsent(serverId, -1);
             peers.computeIfAbsent(serverId,
                                   id -> new PeerServer(zkClient.getServerMembershipData(id)));
         }
@@ -117,17 +115,14 @@ public class Server {
         toBeDeleted.forEach(pending::remove);
     }
 
-    void onBlockChained(BlockId blockId) {
-        Integer blockIdx = lastChainedByPeer.compute(blockId.getServerId(), (peer, idx) -> {
-            int newIdx = blockId.getSerialNumber();
-            if (idx + 1 != newIdx)
-                return idx;
-            return newIdx;
-        });
+    void onBlockChained(BlockId blockId, Integer idx) {
+        LOG("onBlockChained " + blockId);
 
-        if (blockIdx != blockId.getSerialNumber()) // TODO: can we do better?
-            throw new RuntimeException("Missing Block! got " + blockId +
-                                               " but last chained is " + blockIdx);
+        int chainSize = ledger.chainSize();
+        if (chainSize != idx) {
+            LOG("not in order: " + chainSize + "!=" + idx);
+            return;
+        }
 
         var blockMsg = pending.remove(blockId);
         if (blockMsg == null) {
@@ -138,7 +133,9 @@ public class Server {
 
         Block block = Block.from(blockMsg);
         ledger.apply(block);
-        results.putAll(block.getResults());
+        synchronized (results) {
+            results.putAll(block.getResults());
+        }
 
         LOG( " appended!");
         System.out.println(block);
@@ -257,7 +254,10 @@ public class Server {
     }
 
     public Transaction.Result getTxStatus(TxId txId) {
-        Transaction.Result result = results.remove(txId);
+        Transaction.Result result;
+        synchronized (results) {
+            result = results.remove(txId);
+        }
         if (result == null) {
             return null;//TODO: check in the blockchain and return if it is there
         }

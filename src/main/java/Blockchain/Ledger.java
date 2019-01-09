@@ -18,6 +18,10 @@ class Ledger {
     private final HashMap<Account, Integer> data   = new HashMap<>();
     private       int                       lastId = 0;
 
+    public int chainSize() {
+        return chain.size();
+    }
+
     public Account newAccount() {
         try (var ignored = CriticalSection.start(lock.writeLock())) {
             int id      = ++lastId;
