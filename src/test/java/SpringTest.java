@@ -36,10 +36,16 @@ public class SpringTest {
         Account account4;
         do {
             account1 = restTemplate.getForObject(String.format("/newAccounts/%s", tx1.toString()), Account.class);
+        } while (account1 == null);
+        do {
             account2 = restTemplate.getForObject(String.format("/newAccounts/%s", tx2.toString()), Account.class);
+        } while (account2 == null);
+        do {
             account3 = restTemplate.getForObject(String.format("/newAccounts/%s", tx3.toString()), Account.class);
+        } while (account3 == null);
+        do {
             account4 = restTemplate.getForObject(String.format("/newAccounts/%s", tx4.toString()), Account.class);
-        } while (account1 == null || account2 == null || account3 == null || account4 == null);
+        } while (account4 == null);
 
         restTemplate.put(String.format("/accounts/%d/addAmount", account1.getId()), new Amount(100));
         restTemplate.put(String.format("/accounts/%d/addAmount", account3.getId()), new Amount(100));
