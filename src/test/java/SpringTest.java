@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,classes={Application.class})
 public class SpringTest {
     private static final int POLLING_DELAY_MS   = 100;
-    private static final int POLLING_ITERATIONS = 10 * 5;
+    private static final int POLLING_ITERATIONS = 10 * 10;
 
     @Autowired
     private TestRestTemplate restTemplate;

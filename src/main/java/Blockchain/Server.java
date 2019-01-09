@@ -3,7 +3,6 @@ package Blockchain;
 import Blockchain.Transaction.*;
 import ServerCommunication.*;
 import io.grpc.stub.StreamObserver;
-import org.apache.zookeeper.KeeperException;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -128,6 +127,11 @@ public class Server {
         toBeDeleted.forEach(pending::remove);
     }
 
+    void onBlockChainError(ServerCommunication.BlockId blockIdMsg) {
+        LOG("onBlockChainError " + BlockId.from(blockIdMsg));
+        zkClient.postBlock(blockIdMsg);
+    }
+
     void onBlockChained(ServerCommunication.BlockId blockIdMsg, Integer idx) {
         var blockId = BlockId.from(blockIdMsg);
         LOG("onBlockChained " + blockId);
@@ -213,21 +217,7 @@ public class Server {
         }
         if (tries == 0) throw new RuntimeException("Failed to push block " + id);
 
-        int idx = -1;
-
-        tries = 5;
-        var blockIdMsg = id.toBlockIdMsg();
-        for (; tries > 0; --tries) {
-            try {
-                idx = zkClient.postBlock(blockIdMsg);
-                break;
-            } catch (KeeperException e) {
-                e.printStackTrace();
-            }
-        }
-        if (idx == -1) throw new RuntimeException("Failed to reach consensus on block " + id);
-        LOG("consensus reached");
-        onBlockChained(blockIdMsg, idx);
+        zkClient.postBlock(id.toBlockIdMsg());
         // TODO: should apply only after we sure it is the latest, try to bring the rest if not
     }
 
