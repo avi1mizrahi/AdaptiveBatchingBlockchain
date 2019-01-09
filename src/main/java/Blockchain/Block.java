@@ -3,12 +3,11 @@ package Blockchain;
 import Blockchain.Transaction.Transaction;
 import ServerCommunication.BlockMsg;
 import ServerCommunication.Tx;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -33,12 +32,21 @@ class BlockId {
         this.serialNum = serialNum;
     }
 
+    @NotNull
+    @Contract("_, _ -> new")
     public static BlockId from(int serverId, int serialNum) {
         return new BlockId(serverId, serialNum);
     }
 
-    public static BlockId from(ServerCommunication.BlockId blockIdMsg) {
+    @NotNull
+    @Contract("_ -> new")
+    public static BlockId from(@NotNull ServerCommunication.BlockId blockIdMsg) {
         return new BlockId(blockIdMsg.getServerId(), blockIdMsg.getSerialNumber());
+    }
+
+    @NotNull
+    public static BlockId from(@NotNull TxId txId) {
+        return from(txId.getServerId(), txId.getBlockIdx());
     }
 
     public ServerCommunication.BlockId toBlockIdMsg() {
@@ -58,6 +66,7 @@ class BlockId {
                 this.serialNum == other.serialNum;
     }
 
+    @Contract(value = "null -> false", pure = true)
     @Override
     public boolean equals(Object obj) {
         return obj instanceof BlockId && equals((BlockId) obj);
@@ -108,12 +117,14 @@ class Block {
         return blockId;
     }
 
-    Block(BlockId blockId, Stream<Transaction> txs) {
+    Block(BlockId blockId, @NotNull Stream<Transaction> txs) {
         this.blockId = blockId;
         this.txs = txs.map(TxEntry::new).collect(Collectors.toUnmodifiableList());
     }
 
-    static Block from(BlockMsg blockMsg) {
+    @NotNull
+    @Contract("_ -> new")
+    static Block from(@NotNull BlockMsg blockMsg) {
         return new Block(BlockId.from(blockMsg.getId()),
                          blockMsg.getTxsList().stream().map(Transaction::from));
     }
@@ -130,6 +141,10 @@ class Block {
                     txs.get(i).getResult());
         }
         return map;
+    }
+
+    Transaction.Result getResult(TxId txId) {
+        return txs.get(txId.getTxIdx()).getResult();
     }
 
     BlockMsg toBlockMsg() {

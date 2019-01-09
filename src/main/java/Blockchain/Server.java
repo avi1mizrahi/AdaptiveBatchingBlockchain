@@ -321,10 +321,10 @@ public class Server {
         synchronized (results) {
             result = results.get(txId);
         }
-        if (result == null) {
-            return null;//TODO: check in the blockchain and return if it is there
+        if (result != null) {
+            return result;
         }
-        return result;
+        return ledger.getStatus(txId).orElse(null);
     }
 
     public Transaction.Result deleteTxStatus(TxId txId) {

@@ -4,19 +4,20 @@ import Blockchain.Transaction.Transaction;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @ThreadSafe
 public
 class Ledger {
-    private final ReadWriteLock             lock   = new ReentrantReadWriteLock();
-    private final List<Block>               chain  = new ArrayList<>();
-    private final HashMap<Account, Integer> data   = new HashMap<>();
-    private       int                       lastId = 0;
+    private final ReadWriteLock                 lock   = new ReentrantReadWriteLock();
+    private final ConcurrentMap<BlockId, Block> chain  = new ConcurrentHashMap<>();
+    private final HashMap<Account, Integer>     data   = new HashMap<>();
+    private       int                           lastId = 0;
 
     public int chainSize() {
         return chain.size();
@@ -73,7 +74,14 @@ class Ledger {
     void apply(Block block) {
         try (var ignored = CriticalSection.start(lock.writeLock())) {
             block.applyTo(this);
-            chain.add(block);
+            chain.put(block.getId(), block);
         }
+    }
+
+    Optional<Transaction.Result> getStatus(TxId txId) {
+        Block block = chain.get(BlockId.from(txId));
+        if (block == null) return Optional.empty();
+
+        return Optional.of(block.getResult(txId));
     }
 }
