@@ -1,6 +1,9 @@
 # Generated files
 target/
 
+# Config file
+src/main/resources/config.properties
+
 # Log file
 *.log
 
