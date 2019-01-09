@@ -301,7 +301,7 @@ public class Server {
     }
 
     public Integer getAmount(Account account) {
-        LOG("getAmount " + account);
+        //LOG("getAmount " + account);
 
         return ledger.get(account);
     }
@@ -316,7 +316,7 @@ public class Server {
     }
 
     public Transaction.Result getTxStatus(TxId txId) {
-        LOG("getTxStatus " + txId);
+        // LOG("getTxStatus " + txId);
         Transaction.Result result;
         synchronized (results) {
             result = results.get(txId);

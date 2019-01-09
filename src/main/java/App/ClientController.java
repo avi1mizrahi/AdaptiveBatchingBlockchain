@@ -29,7 +29,7 @@ public class ClientController {
         return new Amount(Application.server.getAmount(Account.from(id)));
     }
 
-    @PutMapping("/accounts/{id}/addAmount")
+    @PostMapping("/accounts/{id}/addAmount")
     TxId addAmount(@RequestBody Amount amount, @PathVariable int id) {
         return Application.server.addAmount(Account.from(id), amount.getAmount());
     }

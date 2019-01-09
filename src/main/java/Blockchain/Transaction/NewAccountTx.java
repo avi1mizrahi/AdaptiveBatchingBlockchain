@@ -8,10 +8,7 @@ import ServerCommunication.Tx;
 public class NewAccountTx extends Transaction {
     @Override
     Transaction.Result doYourThing(Ledger ledger) {
-        var account = ledger.newAccount();
-        System.out.println("SERVER: Created " + account);
-
-        return new Result(account);
+        return new Result(ledger.newAccount());
     }
 
     @Override
