@@ -8,6 +8,7 @@ public class Transfer {
     private final int from;
     private final int to;
     private final int amount;
+
     public Transfer(@JsonProperty(value = "from", required = true) int from,
              @JsonProperty(value = "to", required = true) int to,
              @JsonProperty(value = "amount", required = true) int amount) {
@@ -16,12 +17,12 @@ public class Transfer {
         this.amount = amount;
     }
 
-    public int getFrom() {
-        return from;
+    public Account getFrom() {
+        return Account.from(from);
     }
 
-    public int getTo() {
-        return to;
+    public Account getTo() {
+        return Account.from(to);
     }
 
     public int getAmount() {

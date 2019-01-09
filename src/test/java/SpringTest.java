@@ -3,6 +3,7 @@ import Blockchain.Account;
 import Blockchain.Amount;
 import Blockchain.Transfer;
 import Blockchain.TxId;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,classes={Application.class})
 public class SpringTest {
+    public static final int POLLING_DELAY = 100;
     @Autowired
     private TestRestTemplate restTemplate;
 
@@ -30,22 +32,10 @@ public class SpringTest {
         TxId tx3 = restTemplate.postForObject("/accounts", "",TxId.class);
         TxId tx4 = restTemplate.postForObject("/accounts", "",TxId.class);
 
-        Account account1;
-        Account account2;
-        Account account3;
-        Account account4;
-        do {
-            account1 = restTemplate.getForObject(String.format("/newAccounts/%s", tx1.toString()), Account.class);
-        } while (account1 == null);
-        do {
-            account2 = restTemplate.getForObject(String.format("/newAccounts/%s", tx2.toString()), Account.class);
-        } while (account2 == null);
-        do {
-            account3 = restTemplate.getForObject(String.format("/newAccounts/%s", tx3.toString()), Account.class);
-        } while (account3 == null);
-        do {
-            account4 = restTemplate.getForObject(String.format("/newAccounts/%s", tx4.toString()), Account.class);
-        } while (account4 == null);
+        Account account1 = pollGetAccount(tx1);
+        Account account2 = pollGetAccount(tx2);
+        Account account3 = pollGetAccount(tx3);
+        Account account4 = pollGetAccount(tx4);
 
         restTemplate.put(String.format("/accounts/%d/addAmount", account1.getId()), new Amount(100));
         restTemplate.put(String.format("/accounts/%d/addAmount", account3.getId()), new Amount(100));
@@ -78,4 +68,19 @@ public class SpringTest {
         restTemplate.delete(String.format("/accounts/%d", account4.getId()));
     }
 
+    @NotNull
+    private Account pollGetAccount(TxId tx1) {
+        Account account = null;
+        while (account == null) {
+            account = restTemplate.getForObject(String.format("/newAccounts/%s", tx1.toString()),
+                                                Account.class);
+            try {
+                Thread.sleep(POLLING_DELAY);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        restTemplate.delete(String.format("/newAccounts/%s", tx1.toString()), tx1);
+        return account;
+    }
 }

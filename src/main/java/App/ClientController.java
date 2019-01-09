@@ -24,17 +24,17 @@ public class ClientController {
 
     @DeleteMapping("/accounts/{id}")
     TxId deleteAccount(@PathVariable int id) {
-        return Application.server.deleteAccount(id);
+        return Application.server.deleteAccount(Account.from(id));
     }
 
     @GetMapping("/accounts/{id}/amount")
     Amount getAmount(@PathVariable int id) {
-        return new Amount(Application.server.getAmount(id));
+        return new Amount(Application.server.getAmount(Account.from(id)));
     }
 
     @PutMapping("/accounts/{id}/addAmount")
     TxId addAmount(@RequestBody Amount amount, @PathVariable int id) {
-        return Application.server.addAmount(id, amount.getAmount());
+        return Application.server.addAmount(Account.from(id), amount.getAmount());
     }
 
     @PostMapping("/transfers")
@@ -47,6 +47,11 @@ public class ClientController {
         Transaction.Result status = Application.server.getTxStatus(TxId.from(txId));
         if (status == null) return null;
         return ((NewAccountTx.Result)status).getNewAccount();
+    }
+
+    @DeleteMapping("/newAccounts/{txId}")
+    void deleteAccountStatus(@PathVariable String txId) {
+        Application.server.deleteTxStatus(TxId.from(txId));
     }
 
     @GetMapping("/txs/{txId}")

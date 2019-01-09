@@ -216,18 +216,16 @@ public class Server {
         }
     }
 
-    public TxId deleteAccount(int id) {
+    public TxId deleteAccount(Account account) {
         try (var ignored = batchingStrategy.createRequestWindow()) {
-            var account = Account.from(id);
             LOG("Delete " + account);
 
             return blockBuilder.append(new DeleteAccountTx(account));
         }
     }
 
-    public TxId addAmount(int id, int amount) {
+    public TxId addAmount(Account account, int amount) {
         try (var ignored = batchingStrategy.createRequestWindow()) {
-            var account = Account.from(id);
             LOG(account + ", add " + amount);
 
             return blockBuilder.append(new DepositTx(account, amount));
@@ -235,31 +233,38 @@ public class Server {
         }
     }
 
-    public Integer getAmount(int id) {
-        var account = Account.from(id);
+    public Integer getAmount(Account account) {
         LOG("getAmount " + account);
 
         return ledger.get(account);
     }
 
-    public TxId transfer(int from, int to, int amount) {
+    public TxId transfer(Account from, Account to, int amount) {
         try (var ignored = batchingStrategy.createRequestWindow()) {
-            var accountFrom = Account.from(from);
-            var accountTo   = Account.from(to);
 
             LOG("from " + from + " to " + to + " : " + amount);
 
-            return blockBuilder.append(new TransferTx(accountFrom, accountTo, amount));
+            return blockBuilder.append(new TransferTx(from, to, amount));
         }
     }
 
     public Transaction.Result getTxStatus(TxId txId) {
+        LOG("getTxStatus " + txId);
         Transaction.Result result;
         synchronized (results) {
-            result = results.remove(txId);
+            result = results.get(txId);
         }
         if (result == null) {
             return null;//TODO: check in the blockchain and return if it is there
+        }
+        return result;
+    }
+
+    public Transaction.Result deleteTxStatus(TxId txId) {
+        LOG("deleteTxStatus " + txId);
+        Transaction.Result result;
+        synchronized (results) {
+            result = results.remove(txId);
         }
         return result;
     }
