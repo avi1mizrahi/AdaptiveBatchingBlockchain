@@ -7,7 +7,10 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -129,8 +132,8 @@ class Block {
                          blockMsg.getTxsList().stream().map(Transaction::from));
     }
 
-    void applyTo(Ledger ledger) {
-        txs.forEach(entry -> entry.result = entry.tx.process(ledger));
+    void applyTo(Ledger.State state) {
+        txs.forEach(entry -> entry.result = entry.tx.process(state));
     }
 
     Map<TxId, Transaction.Result> getResults() {

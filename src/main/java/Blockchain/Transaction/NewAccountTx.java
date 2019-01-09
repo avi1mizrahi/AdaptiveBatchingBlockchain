@@ -7,8 +7,11 @@ import ServerCommunication.Tx;
 
 public class NewAccountTx extends Transaction {
     @Override
-    Transaction.Result doYourThing(Ledger ledger) {
-        return new Result(ledger.newAccount());
+    Transaction.Result doYourThing(Ledger.State state) {
+        var account = Account.from(state.allocateId());
+        var old     = state.getData().put(account, 0);
+        if (old != null) throw new AssertionError();
+        return new Result(account);
     }
 
     @Override

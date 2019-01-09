@@ -5,77 +5,81 @@ import Blockchain.Transaction.Transaction;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicReference;
+
 
 @ThreadSafe
 public
 class Ledger {
-    private final ReadWriteLock                 lock   = new ReentrantReadWriteLock();
-    private final ConcurrentMap<BlockId, Block> chain  = new ConcurrentHashMap<>();
-    private final HashMap<Account, Integer>     data   = new HashMap<>();
-    private       int                           lastId = 0;
+    private final ConcurrentMap<BlockId, Block> chain = new ConcurrentHashMap<>();
+    private final AtomicReference<State>        state = new AtomicReference<>(new State());
 
     public int chainSize() {
         return chain.size();
     }
 
-    public Account newAccount() {
-        try (var ignored = CriticalSection.start(lock.writeLock())) {
-            int id      = ++lastId;
-            var account = Account.from(id);
-            var old     = data.put(account, 0);
-            assert old == null;
-            return account;
+    public static class State {
+        private final HashMap<Account, Integer> data;
+        private       int                       lastId;
+
+        private State() {
+            this(new HashMap<>(), 0);
         }
-    }
 
-    public boolean deleteAccount(Account account) {
-        return null != data.remove(account);
-    }
+        private State(HashMap<Account, Integer> data, int lastId) {
+            this.data = data;
+            this.lastId = lastId;
+        }
 
-    public boolean add(Account account, int amount) {
-        try (var ignored = CriticalSection.start(lock.writeLock())) {
+        public boolean add(Account account, int amount) {
             if (amount < 0) return false;
             return null != data.computeIfPresent(account,
                                                  (id, currentAmount) ->
                                                          currentAmount + amount);
         }
 
-    }
+        public boolean subtract(Account from, int amount) {
+            if (amount < 0) return false;
 
-    public boolean subtract(Account account, int amount) {
-        try (var ignored = CriticalSection.start(lock.writeLock())) {
-            var ref = new Object() {
-                boolean executed = false;
-            };
+            final boolean[] executed = {false};
 
-            data.computeIfPresent(account, (id_, currentAmount) -> {
+            data.computeIfPresent(from, (id, currentAmount) -> {
                 var newAmount = currentAmount - amount;
                 if (newAmount < 0) return currentAmount;
-                ref.executed = true;
+                executed[0] = true;
                 return newAmount;
             });
-            return ref.executed;
+
+            return executed[0];
         }
 
+        public int allocateId() {
+            return ++lastId;
+        }
+
+        public Map<Account, Integer> getData() {
+            return data;
+        }
+
+        State fork() {
+            return new State(new HashMap<>(data), lastId);
+        }
     }
 
     @Nullable
     Integer get(Account account) {
-        try (var ignored = CriticalSection.start(lock.readLock())) {
-            return data.get(account);
-        }
+        return state.getAcquire().getData().get(account);
     }
 
-    void apply(Block block) {
-        try (var ignored = CriticalSection.start(lock.writeLock())) {
-            block.applyTo(this);
-            chain.put(block.getId(), block);
-        }
+    synchronized void apply(Block block) {
+        State forked = state.get().fork();
+        block.applyTo(forked);
+        state.setRelease(forked);
+        chain.put(block.getId(), block);
     }
 
     Optional<Transaction.Result> getStatus(TxId txId) {

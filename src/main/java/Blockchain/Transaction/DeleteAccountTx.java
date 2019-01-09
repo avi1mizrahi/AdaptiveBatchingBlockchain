@@ -12,9 +12,8 @@ public class DeleteAccountTx extends Transaction {
     }
 
     @Override
-    Transaction.Result doYourThing(Ledger ledger) {
-        ledger.deleteAccount(account);
-
+    Transaction.Result doYourThing(Ledger.State state) {
+        state.getData().remove(account);
         return new Result();
     }
 

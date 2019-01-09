@@ -29,11 +29,11 @@ public abstract class Transaction {
         }
     }
 
-    public Result process(Ledger ledger) {
-        return doYourThing(ledger);
+    public Result process(Ledger.State state) {
+        return doYourThing(state);
     }
 
-    abstract Result doYourThing(Ledger ledger);
+    abstract Result doYourThing(Ledger.State state);
 
     public final Tx toTxMsg() {
         var builder = Tx.newBuilder();

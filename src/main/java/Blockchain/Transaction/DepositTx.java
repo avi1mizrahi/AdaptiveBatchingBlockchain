@@ -14,10 +14,8 @@ public class DepositTx extends Transaction {
     }
 
     @Override
-    Transaction.Result doYourThing(Ledger ledger) {
-        boolean success = ledger.add(account, amount);
-
-        return new Result(success);
+    Transaction.Result doYourThing(Ledger.State state) {
+        return new Result(state.add(account, amount));
     }
 
     @Override

@@ -13,11 +13,12 @@ public class TransferTx extends Transaction {
         this.from = from;
         this.to = to;
         this.amount = amount;
+        if (amount < 0) throw new RuntimeException("amount " + amount + " is negative");
     }
 
     @Override
-    Transaction.Result doYourThing(Ledger ledger) {
-        boolean success = transfer(ledger);
+    Transaction.Result doYourThing(Ledger.State state) {
+        boolean success = transfer(state);
 
         return new Result(success);
     }
@@ -35,12 +36,12 @@ public class TransferTx extends Transaction {
         return super.toString() + "Transfer[" + from + "->" + to + "]+" + amount;
     }
 
-    private boolean transfer(Ledger ledger) {
-        if (ledger.subtract(from, amount)) {
-            if (ledger.add(to, amount)) {
+    private boolean transfer(Ledger.State state) {
+        if (state.subtract(from, amount)) {
+            if (state.add(to, amount)) {
                 return true;
             }
-            ledger.add(from, amount);//return the stolen money
+            state.add(from, amount);//return the stolen money
         }
         return false;
     }
