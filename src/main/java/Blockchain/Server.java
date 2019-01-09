@@ -54,6 +54,10 @@ public class Server {
         server.awaitTermination();
     }
 
+    private void LOG(String msg) {
+        System.out.println("[SERVER] " + msg);
+    }
+
     public Server start() throws IOException {
         batchingStrategy.start();
         serverListener.start();
@@ -71,6 +75,7 @@ public class Server {
     }
 
     void onMembershipChange(Set<Integer> newView) {
+        LOG("onMembershipChange: newView" + newView);
         // clean up removed peers
         List<Integer> removedPeersIds = peers.keySet()
                                              .stream()
@@ -95,6 +100,7 @@ public class Server {
     }
 
     private void cleanUpServerBlocks(int serverId) {
+        LOG("cleaning server " + serverId);
         // TODO: synchronize with ZK to find the latest block chained by this server.
         //  this can by done once for all disconnected servers
         int latestBlock = Integer.MAX_VALUE - 1; // TODO replace with the above real value
@@ -124,20 +130,22 @@ public class Server {
                                                " but last chained is " + blockIdx);
 
         var blockMsg = pending.remove(blockId);
-        if (blockMsg == null)
-            throw new RuntimeException("Block " + blockId +
-                                               " wasn't received yet");//TODO remove, what if it's not here yet? need to pull
+        if (blockMsg == null) {
+            var message = "Block " + blockId + " wasn't received yet";
+            LOG(message);
+            throw new RuntimeException(message);//TODO remove, what if it's not here yet? need to pull
+        }
 
         Block block = Block.from(blockMsg);
         ledger.apply(block);
         results.putAll(block.getResults());
 
-        System.out.println("SERVER: appended!");
+        LOG( " appended!");
         System.out.println(block);
     }
 
     private void pushBlock(@NotNull Block block) {
-
+        LOG("pushBlock: " + block.getId());
         BlockMsg blockMsg = block.toBlockMsg();
         //TODO: send this to others
         //TODO: wait for more than half
@@ -148,10 +156,14 @@ public class Server {
         if (blockBuilder.isEmpty()) {
             return;
         }
+
+        LOG("sealing block");
+
         Block block = blockBuilder.seal();
 
         pushBlock(block);
         zkClient.postBlock(block.getId());
+        LOG("consensus reached");
         // TODO: should apply only after we sure it is the latest, try to bring the rest if not
     }
 
@@ -169,8 +181,12 @@ public class Server {
             var block   = request.getBlock();
             var blockId = block.getId();
 
-            if (lostPeerIds.contains(blockId.getServerId()))
+            LOG("pushBlock requested " + blockId);
+
+            if (lostPeerIds.contains(blockId.getServerId())) {
+                LOG("pushBlock rejected");
                 return; // don't listen to this zombie
+            }
 
             pending.putIfAbsent(blockId, block);
 
@@ -180,7 +196,9 @@ public class Server {
 
         @Override
         public void pullBlock(PullBlockReq request, StreamObserver<PullBlockRsp> responseObserver) {
-            var block = pending.get(request.getId());
+            BlockMsg block = pending.get(request.getId());
+
+            LOG("pullBlock requested " + block.getId());
 
             var builder = PullBlockRsp.newBuilder();
             if (block != null) {
@@ -195,7 +213,7 @@ public class Server {
 
     public TxId createAccount() {
         try (var ignored = batchingStrategy.createRequestWindow()) {
-            System.out.println("SERVER: Create account");
+            LOG("Create account");
 
             return blockBuilder.append(new NewAccountTx());
         }
@@ -204,7 +222,7 @@ public class Server {
     public TxId deleteAccount(int id) {
         try (var ignored = batchingStrategy.createRequestWindow()) {
             var account = Account.from(id);
-            System.out.println("SERVER: Delete " + account);
+            LOG("Delete " + account);
 
             return blockBuilder.append(new DeleteAccountTx(account));
         }
@@ -213,7 +231,7 @@ public class Server {
     public TxId addAmount(int id, int amount) {
         try (var ignored = batchingStrategy.createRequestWindow()) {
             var account = Account.from(id);
-            System.out.println("SERVER: " + account + ", add " + amount);
+            LOG(account + ", add " + amount);
 
             return blockBuilder.append(new DepositTx(account, amount));
 
@@ -222,7 +240,7 @@ public class Server {
 
     public Integer getAmount(int id) {
         var account = Account.from(id);
-        System.out.println("SERVER: getAmount " + account);
+        LOG("getAmount " + account);
 
         return ledger.get(account);
     }
@@ -232,7 +250,7 @@ public class Server {
             var accountFrom = Account.from(from);
             var accountTo   = Account.from(to);
 
-            System.out.println("SERVER: from " + from + " to " + to + " : " + amount);
+            LOG("from " + from + " to " + to + " : " + amount);
 
             return blockBuilder.append(new TransferTx(accountFrom, accountTo, amount));
         }
