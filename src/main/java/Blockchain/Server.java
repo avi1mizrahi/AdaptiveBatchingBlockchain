@@ -10,6 +10,9 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -153,8 +156,41 @@ public class Server {
     private boolean pushBlock(@NotNull Block block) throws InterruptedException {
         LOG("pushBlock: " + block.getId());
         BlockMsg blockMsg = block.toBlockMsg();
-        //TODO: send this to others
-        //TODO: wait for more than half
+
+        PushBlockReq req = PushBlockReq.newBuilder().setBlock(blockMsg).build();
+
+        var finished = new Semaphore(0);
+        var nOk      = new AtomicInteger(0);
+
+        class PushBlockObserver implements StreamObserver<PushBlockRsp> {
+            @Override
+            public void onNext(PushBlockRsp value) {
+                if (value.getSuccess()) nOk.incrementAndGet();
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                finished.release();
+            }
+
+            @Override
+            public void onCompleted() {
+                finished.release();
+            }
+        }
+
+        peers.forEach((integer, peerServer) -> peerServer.stub()
+                                                         .withDeadlineAfter(5, TimeUnit.SECONDS)
+                                                         .pushBlock(req,
+                                                                    new PushBlockObserver()));
+
+        //TODO: wait for more than half, not to everyone
+        finished.acquire(peers.size());
+
+        if (nOk.get() < peers.size()) {
+            return false;
+        }
+
         pending.putIfAbsent(block.getId(), blockMsg);
         return true;
     }
@@ -168,7 +204,12 @@ public class Server {
 
         Block block = blockBuilder.seal();
 
-        pushBlock(block);
+        int tries = 5;
+        for (; tries > 0 ; --tries) {
+            if (pushBlock(block)) break;
+        }
+        if (tries == 0) throw new RuntimeException("Failed to push block " + block.getId());
+
         zkClient.postBlock(block.getId());
         LOG("consensus reached");
         // TODO: should apply only after we sure it is the latest, try to bring the rest if not

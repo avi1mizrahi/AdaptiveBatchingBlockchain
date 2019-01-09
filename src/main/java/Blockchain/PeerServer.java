@@ -8,14 +8,14 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 class PeerServer {
-    private final ServerGrpc.ServerFutureStub stub;
-    private final ManagedChannel              channel;
+    private final ServerGrpc.ServerStub stub;
+    private final ManagedChannel        channel;
 
     PeerServer(InetSocketAddress address) {
         channel = ManagedChannelBuilder.forAddress(address.getHostName(), address.getPort())
                                        .usePlaintext()
                                        .build();
-        stub = ServerGrpc.newFutureStub(channel);
+        stub = ServerGrpc.newStub(channel);
     }
 
     void shutdown() {
@@ -25,5 +25,9 @@ class PeerServer {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    ServerGrpc.ServerStub stub() {
+        return stub;
     }
 }
