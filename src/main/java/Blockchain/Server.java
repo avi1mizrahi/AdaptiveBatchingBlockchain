@@ -36,7 +36,17 @@ public class Server {
         this.id = id;
         blockBuilder = new BlockBuilder(id);
         address = SocketAddressFactory.from("localhost", serverPort);
-        batchingStrategy = new TimedAdaptiveBatching(this::trySealBlock, blockWindow);
+        batchingStrategy = new TimedAdaptiveBatching(new BatcherProxy() {
+            @Override
+            public void batch() throws InterruptedException {
+                trySealBlock();
+            }
+
+            @Override
+            public void interrupted() {
+                shutdown();
+            }
+        }, blockWindow);
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
                                               .build();
@@ -141,15 +151,16 @@ public class Server {
         System.out.println(block);
     }
 
-    private void pushBlock(@NotNull Block block) {
+    private boolean pushBlock(@NotNull Block block) throws InterruptedException {
         LOG("pushBlock: " + block.getId());
         BlockMsg blockMsg = block.toBlockMsg();
         //TODO: send this to others
         //TODO: wait for more than half
         pending.putIfAbsent(block.getId(), blockMsg);
+        return true;
     }
 
-    private void trySealBlock() {
+    private void trySealBlock() throws InterruptedException {
         if (blockBuilder.isEmpty()) {
             return;
         }

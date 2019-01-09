@@ -4,15 +4,21 @@ import java.io.Closeable;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-abstract class BatchingStrategy {
-    private final Runnable doBatch;
+interface BatcherProxy {
+    void batch() throws InterruptedException;
 
-    BatchingStrategy(Runnable doBatch) {
-        this.doBatch = doBatch;
+    void interrupted();
+}
+
+abstract class BatchingStrategy {
+    private final BatcherProxy batcherProxy;
+
+    BatchingStrategy(BatcherProxy batcherProxy) {
+        this.batcherProxy = batcherProxy;
     }
 
-    void batch() {
-        doBatch.run();
+    void batch() throws InterruptedException {
+        batcherProxy.batch();
     }
 
     void onRequestBegin() {
@@ -49,12 +55,12 @@ class TimedAdaptiveBatching extends BatchingStrategy {
     private final Thread        appender;
     private       int           skippedWindows = 0;
 
-    TimedAdaptiveBatching(Runnable doBatch, Duration blockWindow) {
-        this(doBatch, blockWindow, 5);
+    TimedAdaptiveBatching(BatcherProxy batcherProxy, Duration blockWindow) {
+        this(batcherProxy, blockWindow, 5);
     }
 
-    TimedAdaptiveBatching(Runnable doBatch, Duration blockWindow, int windowsLimit) {
-        super(doBatch);
+    TimedAdaptiveBatching(BatcherProxy batcherProxy, Duration blockWindow, int windowsLimit) {
+        super(batcherProxy);
 
         appender = new Thread(() -> {
             while (!Thread.interrupted()) {
@@ -71,7 +77,15 @@ class TimedAdaptiveBatching extends BatchingStrategy {
                 }
 
                 skippedWindows = 0;
-                batch();
+
+                try {
+                    batch();
+                } catch (InterruptedException e) {
+                    System.err.println("batching was interrupted");
+                    e.printStackTrace();
+                    batcherProxy.interrupted();
+                    break;
+                }
             }
         });
     }
@@ -100,8 +114,8 @@ class TimedAdaptiveBatching extends BatchingStrategy {
 
 class FixedWindowBatching extends TimedAdaptiveBatching {
 
-    FixedWindowBatching(Runnable doBatch, Duration blockWindow) {
-        super(doBatch, blockWindow, 1);
+    FixedWindowBatching(BatcherProxy batcherProxy, Duration blockWindow) {
+        super(batcherProxy, blockWindow, 1);
     }
 }
 
