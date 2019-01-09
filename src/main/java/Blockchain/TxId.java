@@ -7,10 +7,11 @@ import java.util.Objects;
 
 @Data
 public class TxId {
-    public static final String SEPARATOR = "-";
+    private static final String SEPARATOR = "-";
 
     private final int serverId;
     private final int blockIdx;
+
     private final int txIdx;
 
     public TxId(@JsonProperty(value = "serverId", required = true) int serverId,
@@ -27,6 +28,18 @@ public class TxId {
         return new TxId(Integer.valueOf(split[0]),
                         Integer.valueOf(split[1]),
                         Integer.valueOf(split[2]));
+    }
+
+    public int getServerId() {
+        return serverId;
+    }
+
+    public int getBlockIdx() {
+        return blockIdx;
+    }
+
+    public int getTxIdx() {
+        return txIdx;
     }
 
     public boolean equals(TxId other) {
