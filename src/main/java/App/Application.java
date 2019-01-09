@@ -19,11 +19,10 @@ public class Application {
 
     static private void init(int port) throws IOException {
         server = new ServerBuilder().setId(1)
-                .setServerPort(33333)
-                .createServer()
-                .start();
+                                    .setServerPort(port)
+                                    .createServer()
+                                    .start();
     }
-
 
     public static void main(String[] args) throws IOException {
         int port = 33333;
