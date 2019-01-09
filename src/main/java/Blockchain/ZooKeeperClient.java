@@ -138,22 +138,15 @@ public class ZooKeeperClient implements Watcher {
         server.onMembershipChange(view);
     }
 
-    void postBlock(BlockId blockId) {
+    Integer postBlock(BlockId blockId) throws KeeperException, InterruptedException {
         // Try to create the znode of this block under /Blockchain.
-        zk.create(blockchainRootPath + "/",
-                  blockId.toByteArray(),
-                  ZooDefs.Ids.OPEN_ACL_UNSAFE,
-                  CreateMode.PERSISTENT_SEQUENTIAL,
-                  (rc, path, ctx, name) -> {
-                      if (rc != KeeperException.Code.OK.intValue()) {
-                          System.exit(-2);
-                      }
+        String path = zk.create(blockchainRootPath + "/",
+                                blockId.toByteArray(),
+                                ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                                CreateMode.PERSISTENT_SEQUENTIAL);
 
-                      String idx = name.substring(blockchainRootPath.length() + 1);
-                      server.onBlockChained(getBlockId(idx),
-                                            Integer.valueOf(idx));
-                  },
-                  null);
+        String idx = path.substring(blockchainRootPath.length() + 1);
+        return Integer.valueOf(idx);
     }
 
     private void updateBlockchain() throws KeeperException, InterruptedException {
