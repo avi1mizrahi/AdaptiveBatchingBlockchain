@@ -36,7 +36,6 @@ public class ZooKeeperServer {
     private void execute(String ... command) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(command);
 //        pb.inheritIO();
-        System.out.println(pb.redirectOutput());
         pb.directory(new File(zkRoot, "bin"));
         Process p = pb.start();
         p.waitFor();
