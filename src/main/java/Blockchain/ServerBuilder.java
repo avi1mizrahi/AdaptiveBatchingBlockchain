@@ -4,7 +4,7 @@ import java.time.Duration;
 
 public class ServerBuilder {
     private int      serverPort  = -1;
-    private Duration blockWindow = Duration.ofSeconds(1);
+    private Duration blockWindow = Duration.ofMillis(100);
     private int      id          = -1;
 
     public ServerBuilder setId(int id) {

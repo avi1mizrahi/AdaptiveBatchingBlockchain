@@ -139,7 +139,6 @@ public class ZooKeeperClient implements Watcher {
     }
 
     void postBlock(BlockId blockId) {
-        int i = 3;
         // Try to create the znode of this block under /Blockchain.
         zk.create(blockchainRootPath + "/",
                   blockId.toByteArray(),

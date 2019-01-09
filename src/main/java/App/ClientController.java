@@ -8,9 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class ClientController {
-
-
-
     private static Logger log = Logger.getLogger(ClientController.class.getName());
 
     @PostMapping("/accounts")
