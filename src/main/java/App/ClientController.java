@@ -1,11 +1,8 @@
 package App;
 
-import Blockchain.Account;
-import Blockchain.Amount;
+import Blockchain.*;
 import Blockchain.Transaction.NewAccountTx;
 import Blockchain.Transaction.Transaction;
-import Blockchain.Transfer;
-import Blockchain.TxId;
 import org.apache.log4j.Logger;
 import org.springframework.web.bind.annotation.*;
 
@@ -55,7 +52,9 @@ public class ClientController {
     }
 
     @GetMapping("/txs/{txId}")
-    Boolean getTxStatus(@PathVariable int serverId, @PathVariable String txId) {
-        return Application.server.getTxStatus(TxId.from(txId)).isCommitted();
+    TxStatus getTxStatus(@PathVariable String txId) {
+        Transaction.Result status = Application.server.getTxStatus(TxId.from(txId));
+        if (status == null) return new TxStatus(false);
+        return new TxStatus(status.isCommitted());
     }
 }

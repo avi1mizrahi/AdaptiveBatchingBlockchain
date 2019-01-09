@@ -3,7 +3,6 @@ import Blockchain.Account;
 import Blockchain.Amount;
 import Blockchain.Transfer;
 import Blockchain.TxId;
-import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,9 +39,10 @@ public class SpringTest {
         restTemplate.put(String.format("/accounts/%d/addAmount", account1.getId()), new Amount(100));
         restTemplate.put(String.format("/accounts/%d/addAmount", account3.getId()), new Amount(100));
 
-
         TxId transfer1 = restTemplate.postForObject("/transfers", new Transfer(account1.getId(), account2.getId(), 50), TxId.class);
         TxId transfer2 = restTemplate.postForObject("/transfers", new Transfer(account1.getId(), account3.getId(), 50), TxId.class);
+        TxStatus tx1status = pollGetAccount(transfer1);
+        TxStatus tx2status = pollGetAccount(transfer2);
 
         Amount amount1 = restTemplate.getForObject(String.format("/accounts/%d/amount", account1.getId()), Amount.class);
         Amount amount2 = restTemplate.getForObject(String.format("/accounts/%d/amount", account2.getId()), Amount.class);
@@ -55,6 +55,7 @@ public class SpringTest {
         assertEquals(amount4.getAmount(), 0);
 
         TxId transfer3 = restTemplate.postForObject("/transfers", new Transfer(account3.getId(), account1.getId(), 150), TxId.class);
+        TxStatus tx3status = pollGetAccount(transfer3);
 
         amount1 = restTemplate.getForObject(String.format("/accounts/%d/amount", account1.getId()), Amount.class);
         amount3 = restTemplate.getForObject(String.format("/accounts/%d/amount", account3.getId()), Amount.class);
