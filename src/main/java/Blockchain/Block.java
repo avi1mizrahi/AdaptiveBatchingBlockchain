@@ -1,7 +1,6 @@
 package Blockchain;
 
 import Blockchain.Transaction.Transaction;
-import ServerCommunication.BlockId;
 import ServerCommunication.BlockMsg;
 import ServerCommunication.Tx;
 import org.jetbrains.annotations.Nullable;
@@ -9,12 +8,66 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+class BlockId {
+    private final int serverId;
+    private final int serialNum;
+
+    public int getServerId() {
+        return serverId;
+    }
+
+    public int getSerialNum() {
+        return serialNum;
+    }
+
+    private BlockId(int serverId, int serialNum) {
+        this.serverId = serverId;
+        this.serialNum = serialNum;
+    }
+
+    public static BlockId from(int serverId, int serialNum) {
+        return new BlockId(serverId, serialNum);
+    }
+
+    public static BlockId from(ServerCommunication.BlockId blockIdMsg) {
+        return new BlockId(blockIdMsg.getServerId(), blockIdMsg.getSerialNumber());
+    }
+
+    public ServerCommunication.BlockId toBlockIdMsg() {
+        return ServerCommunication.BlockId.newBuilder()
+                                          .setServerId(serverId)
+                                          .setSerialNumber(serialNum)
+                                          .build();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(serverId, serialNum);
+    }
+
+    public boolean equals(BlockId other) {
+        return this.serverId == other.serverId &&
+                this.serialNum == other.serialNum;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof BlockId && equals((BlockId) obj);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[BlockId(sid=%d, i=%d)]", serverId, serialNum);
+    }
+}
 
 class Block {
     private class TxEntry {
@@ -61,7 +114,8 @@ class Block {
     }
 
     static Block from(BlockMsg blockMsg) {
-        return new Block(blockMsg.getId(), blockMsg.getTxsList().stream().map(Transaction::from));
+        return new Block(BlockId.from(blockMsg.getId()),
+                         blockMsg.getTxsList().stream().map(Transaction::from));
     }
 
     void applyTo(Ledger ledger) {
@@ -72,7 +126,7 @@ class Block {
         HashMap<TxId, Transaction.Result> map = new HashMap<>();
 
         for (int i = 0; i < txs.size(); i++) {
-            map.put(new TxId(blockId.getServerId(), blockId.getSerialNumber(), i),
+            map.put(new TxId(blockId.getServerId(), blockId.getSerialNum(), i),
                     txs.get(i).getResult());
         }
         return map;
@@ -83,17 +137,19 @@ class Block {
                                .map(TxEntry::getTx)
                                .map(Transaction::toTxMsg);
 
-        return BlockMsg.newBuilder().setId(blockId).addAllTxs(txMsgs::iterator).build();
+        return BlockMsg.newBuilder()
+                       .setId(blockId.toBlockIdMsg())
+                       .addAllTxs(txMsgs::iterator)
+                       .build();
     }
 
     @Override
     public String toString() {
-        String idStr = blockId.toString().replace('\n', ';');
         return txs.stream()
                   .map(TxEntry::toString)
                   .collect(Collectors.joining("\n",
                                               "+++BLOCK+++ [" +
-                                                      idStr + "][size=" + txs.size() + "]\n",
+                                                      blockId + "][size=" + txs.size() + "]\n",
                                               "\n---BLOCK---"));
     }
 }
@@ -135,8 +191,7 @@ class BlockBuilder {
             txIdx.set(0);
         }
 
-        return new Block(BlockId.newBuilder().setServerId(id).setSerialNumber(prevBlockIdx).build(),
-                         oldList.stream());
+        return new Block(BlockId.from(id, prevBlockIdx), oldList.stream());
     }
 
 }

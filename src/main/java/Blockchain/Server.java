@@ -120,7 +120,7 @@ public class Server {
 
         List<BlockId> toBeDeleted = new ArrayList<>();
         pending.forEachKey(1024, blockId -> {
-            if (blockId.getServerId() == serverId && blockId.getSerialNumber() > latestBlock) {
+            if (blockId.getServerId() == serverId && blockId.getSerialNum() > latestBlock) {
                 toBeDeleted.add(blockId);
             }
         });
@@ -128,7 +128,8 @@ public class Server {
         toBeDeleted.forEach(pending::remove);
     }
 
-    void onBlockChained(BlockId blockId, Integer idx) {
+    void onBlockChained(ServerCommunication.BlockId blockIdMsg, Integer idx) {
+        var blockId = BlockId.from(blockIdMsg);
         LOG("onBlockChained " + blockId);
 
         int chainSize = ledger.chainSize();
@@ -215,9 +216,10 @@ public class Server {
         int idx = -1;
 
         tries = 5;
+        var blockIdMsg = id.toBlockIdMsg();
         for (; tries > 0; --tries) {
             try {
-                idx = zkClient.postBlock(id);
+                idx = zkClient.postBlock(blockIdMsg);
                 break;
             } catch (KeeperException e) {
                 e.printStackTrace();
@@ -225,7 +227,7 @@ public class Server {
         }
         if (idx == -1) throw new RuntimeException("Failed to reach consensus on block " + id);
         LOG("consensus reached");
-        onBlockChained(id, idx);
+        onBlockChained(blockIdMsg, idx);
         // TODO: should apply only after we sure it is the latest, try to bring the rest if not
     }
 
@@ -241,7 +243,7 @@ public class Server {
         @Override
         public void pushBlock(PushBlockReq request, StreamObserver<PushBlockRsp> responseObserver) {
             var block   = request.getBlock();
-            var blockId = block.getId();
+            var blockId = BlockId.from(block.getId());
 
             LOG("pushBlock requested " + blockId);
 
