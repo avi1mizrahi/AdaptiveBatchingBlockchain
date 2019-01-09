@@ -1,4 +1,5 @@
 import App.Application;
+import App.ZooKeeperServer;
 import Blockchain.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
@@ -9,6 +10,9 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.junit4.SpringRunner;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -23,7 +27,10 @@ public class SpringTest {
     int port;
 
     @Test
-    public void basicTest() {
+    public void basicTest() throws IOException, URISyntaxException, InterruptedException {
+        ZooKeeperServer zkServer = new ZooKeeperServer();
+        zkServer.start();
+
         TxId tx1 = restTemplate.postForObject("/accounts", "",TxId.class);
         TxId tx2 = restTemplate.postForObject("/accounts", "",TxId.class);
         TxId tx3 = restTemplate.postForObject("/accounts", "",TxId.class);
@@ -65,6 +72,9 @@ public class SpringTest {
         restTemplate.delete(String.format("/accounts/%d", account2.getId()));
         restTemplate.delete(String.format("/accounts/%d", account3.getId()));
         restTemplate.delete(String.format("/accounts/%d", account4.getId()));
+
+        zkServer.stop();
+        zkServer.removeDataDir();
     }
 
     @NotNull
