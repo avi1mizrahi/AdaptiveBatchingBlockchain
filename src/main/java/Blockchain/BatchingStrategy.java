@@ -1,5 +1,7 @@
 package Blockchain;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.Closeable;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,7 +40,7 @@ abstract class BatchingStrategy {
     static class RequestWindow implements Closeable {
         private final BatchingStrategy strategy;
 
-        private RequestWindow(BatchingStrategy strategy) {
+        private RequestWindow(@NotNull BatchingStrategy strategy) {
             this.strategy = strategy;
             strategy.onRequestBegin();
         }

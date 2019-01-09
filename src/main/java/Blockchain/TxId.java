@@ -2,6 +2,8 @@ package Blockchain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
@@ -22,7 +24,9 @@ public class TxId {
         this.txIdx = txIdx;
     }
 
-    public static TxId from(String stringId) {
+    @NotNull
+    @Contract("_ -> new")
+    public static TxId from(@NotNull String stringId) {
         String[] split = stringId.split(SEPARATOR);
         if (split.length != 3) throw new RuntimeException(stringId + " is not a valid TxId");
         return new TxId(Integer.valueOf(split[0]),
@@ -48,6 +52,7 @@ public class TxId {
                 this.txIdx == other.txIdx;
     }
 
+    @Contract(value = "null -> false", pure = true)
     @Override
     public boolean equals(Object obj) {
         return obj instanceof TxId && equals((TxId) obj);

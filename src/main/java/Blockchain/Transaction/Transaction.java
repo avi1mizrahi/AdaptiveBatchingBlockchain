@@ -3,10 +3,14 @@ package Blockchain.Transaction;
 import Blockchain.Account;
 import Blockchain.Ledger;
 import ServerCommunication.Tx;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 public abstract class Transaction {
     // This is ugly
-    public static Transaction from(Tx tx) {
+    @NotNull
+    @Contract("_ -> new")
+    public static Transaction from(@NotNull Tx tx) {
         switch (tx.getTxTypeCase()) {
             case CREATE:
                 return new NewAccountTx();
@@ -20,12 +24,9 @@ public abstract class Transaction {
                 return new TransferTx(Account.from(transferTx.getFromId()),
                                       Account.from(transferTx.getToId()),
                                       transferTx.getAmount());
-            case GETAMOUNT:
-            case TXTYPE_NOT_SET:
+            default:
                 throw new RuntimeException();
         }
-
-        return null;
     }
 
     public Result process(Ledger ledger) {

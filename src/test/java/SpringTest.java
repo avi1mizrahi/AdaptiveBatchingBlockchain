@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,classes={Application.class})
 public class SpringTest {
-    public static final int POLLING_DELAY = 100;
+    private static final int POLLING_DELAY = 100;
     @Autowired
     private TestRestTemplate restTemplate;
 
