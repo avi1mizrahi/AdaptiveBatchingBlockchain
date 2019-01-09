@@ -54,7 +54,7 @@ public class ClientController {
     @GetMapping("/txs/{txId}")
     TxStatus getTxStatus(@PathVariable String txId) {
         Transaction.Result status = Application.server.getTxStatus(TxId.from(txId));
-        if (status == null) return new TxStatus(false);
+        if (status == null) return null;
         return new TxStatus(status.isCommitted());
     }
 }

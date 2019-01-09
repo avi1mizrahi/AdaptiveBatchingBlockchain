@@ -1,8 +1,6 @@
 import App.Application;
-import Blockchain.Account;
-import Blockchain.Amount;
-import Blockchain.Transfer;
-import Blockchain.TxId;
+import Blockchain.*;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,10 +37,10 @@ public class SpringTest {
         restTemplate.put(String.format("/accounts/%d/addAmount", account1.getId()), new Amount(100));
         restTemplate.put(String.format("/accounts/%d/addAmount", account3.getId()), new Amount(100));
 
-        TxId transfer1 = restTemplate.postForObject("/transfers", new Transfer(account1.getId(), account2.getId(), 50), TxId.class);
-        TxId transfer2 = restTemplate.postForObject("/transfers", new Transfer(account1.getId(), account3.getId(), 50), TxId.class);
-        TxStatus tx1status = pollGetAccount(transfer1);
-        TxStatus tx2status = pollGetAccount(transfer2);
+        TxId transfer1 = restTemplate.postForObject("/transfers", new Transfer(account1, account2, 50), TxId.class);
+        TxId transfer2 = restTemplate.postForObject("/transfers", new Transfer(account1, account3, 50), TxId.class);
+        TxStatus tx1status = pollGetStatus(transfer1);
+        TxStatus tx2status = pollGetStatus(transfer2);
 
         Amount amount1 = restTemplate.getForObject(String.format("/accounts/%d/amount", account1.getId()), Amount.class);
         Amount amount2 = restTemplate.getForObject(String.format("/accounts/%d/amount", account2.getId()), Amount.class);
@@ -54,8 +52,8 @@ public class SpringTest {
         assertEquals(amount3.getAmount(), 150);
         assertEquals(amount4.getAmount(), 0);
 
-        TxId transfer3 = restTemplate.postForObject("/transfers", new Transfer(account3.getId(), account1.getId(), 150), TxId.class);
-        TxStatus tx3status = pollGetAccount(transfer3);
+        TxId transfer3 = restTemplate.postForObject("/transfers", new Transfer(account3, account1, 150), TxId.class);
+        TxStatus tx3status = pollGetStatus(transfer3);
 
         amount1 = restTemplate.getForObject(String.format("/accounts/%d/amount", account1.getId()), Amount.class);
         amount3 = restTemplate.getForObject(String.format("/accounts/%d/amount", account3.getId()), Amount.class);
@@ -83,5 +81,21 @@ public class SpringTest {
         }
         restTemplate.delete(String.format("/newAccounts/%s", tx1.toString()), tx1);
         return account;
+    }
+
+    @NotNull
+    private TxStatus pollGetStatus(TxId tx1) {
+        TxStatus status = null;
+        while (status == null) {
+            status = restTemplate.getForObject(String.format("/txs/%s", tx1.toString()),
+                    TxStatus.class);
+            try {
+                Thread.sleep(POLLING_DELAY);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        restTemplate.delete(String.format("/txs/%s", tx1.toString()), tx1);
+        return status;
     }
 }

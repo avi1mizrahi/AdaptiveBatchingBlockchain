@@ -5,12 +5,12 @@ import lombok.Data;
 
 @Data
 public class Transfer {
-    private final int from;
-    private final int to;
+    private final Account from;
+    private final Account to;
     private final int amount;
 
-    public Transfer(@JsonProperty(value = "from", required = true) int from,
-             @JsonProperty(value = "to", required = true) int to,
+    public Transfer(@JsonProperty(value = "from", required = true) Account from,
+             @JsonProperty(value = "to", required = true) Account to,
              @JsonProperty(value = "amount", required = true) int amount) {
         this.from = from;
         this.to = to;
@@ -18,11 +18,11 @@ public class Transfer {
     }
 
     public Account getFrom() {
-        return Account.from(from);
+        return from;
     }
 
     public Account getTo() {
-        return Account.from(to);
+        return to;
     }
 
     public int getAmount() {
