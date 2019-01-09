@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -90,7 +91,8 @@ class Block {
         return txs.stream()
                   .map(TxEntry::toString)
                   .collect(Collectors.joining("\n",
-                                              "+++BLOCK+++ [size=" + txs.size() + "]\n",
+                                              "+++BLOCK+++ [" +
+                                                      getId() + "][size=" + txs.size() + "]\n",
                                               "\n---BLOCK---"));
     }
 }
@@ -99,9 +101,9 @@ class BlockBuilder {
     private       ConcurrentLinkedQueue<Transaction> txs           = new ConcurrentLinkedQueue<>();
     private final ReadWriteLock                      readWriteLock = new ReentrantReadWriteLock();
 
-    private final int id;
-    private       int blockIdx = 0;
-    private       int txIdx    = 0;
+    private final int           id;
+    private       int           blockIdx = 0;
+    private       AtomicInteger txIdx    = new AtomicInteger(0);
 
     BlockBuilder(int id) {
         this.id = id;
@@ -112,26 +114,27 @@ class BlockBuilder {
     }
 
     TxId append(Transaction tx) {
-        TxId txId;
         try (var ignored = CriticalSection.start(readWriteLock.readLock())) {
-            txId = new TxId(this.id, blockIdx, txIdx++);
+            TxId txId = new TxId(this.id, blockIdx, txIdx.getAndIncrement());
             txs.add(tx);
+            return txId;
         }
-        return txId;
     }
 
     Block seal() {
         ConcurrentLinkedQueue<Transaction> newList = new ConcurrentLinkedQueue<>();
         ConcurrentLinkedQueue<Transaction> oldList;
 
+        int prevBlockIdx;
+
         try (var ignored = CriticalSection.start(readWriteLock.writeLock())) {
             oldList = txs;
             txs = newList;
-            blockIdx++;
-            txIdx = 0;
+            prevBlockIdx = blockIdx++;
+            txIdx.set(0);
         }
 
-        return new Block(BlockId.newBuilder().setServerId(id).setSerialNumber(blockIdx).build(),
+        return new Block(BlockId.newBuilder().setServerId(id).setSerialNumber(prevBlockIdx).build(),
                          oldList.stream());
     }
 
