@@ -95,6 +95,7 @@ public class Server {
                                              }).collect(Collectors.toList());
 
         for (Integer peerId : removedPeersIds) {
+            lostPeerIds.add(peerId);
             final PeerServer peer = peers.remove(peerId);
             peer.shutdown();
             cleanUpServerBlocks(peerId);
@@ -112,8 +113,6 @@ public class Server {
         // TODO: synchronize with ZK to find the latest block chained by this server.
         //  this can by done once for all disconnected servers
         int latestBlock = Integer.MAX_VALUE - 1; // TODO replace with the above real value
-
-        lostPeerIds.add(serverId);
 
         List<BlockId> toBeDeleted = new ArrayList<>();
         pending.forEachKey(1024, blockId -> {
