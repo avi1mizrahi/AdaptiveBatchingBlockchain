@@ -88,11 +88,12 @@ class Block {
 
     @Override
     public String toString() {
+        String idStr = blockId.toString().replace('\n', ';');
         return txs.stream()
                   .map(TxEntry::toString)
                   .collect(Collectors.joining("\n",
                                               "+++BLOCK+++ [" +
-                                                      getId() + "][size=" + txs.size() + "]\n",
+                                                      idStr + "][size=" + txs.size() + "]\n",
                                               "\n---BLOCK---"));
     }
 }
