@@ -158,8 +158,6 @@ public class ZooKeeperClient implements Watcher {
 
                       String idx = name.substring(blockchainRootPath.length() + 1);
                       LOG("CHAINED! " + blockId + " idx=" +idx);
-                      server.onBlockChained(blockId,
-                                            Integer.valueOf(idx));
                   },
                   null);
     }

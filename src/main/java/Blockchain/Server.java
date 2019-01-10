@@ -211,7 +211,7 @@ public class Server {
         final Block   block = blockBuilder.seal();
         final BlockId id    = block.getId();
 
-        int tries = 5;
+        int tries = 10;
         for (; tries > 0 ; --tries) {
             if (pushBlock(block)) break;
         }
