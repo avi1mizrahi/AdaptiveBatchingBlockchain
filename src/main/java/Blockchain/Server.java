@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 public class Server {
     private final int               id;
     private final InetSocketAddress address;
+    private final int               faultSetSize;
 
     private final BatchingStrategy batchingStrategy;
     private final BlockBuilder     blockBuilder;
@@ -39,10 +40,11 @@ public class Server {
     private final ZooKeeperClient zkClient;
 
 
-    Server(int id, int serverPort, BatchingStrategy batchingStrategy) {
+    Server(int id, int serverPort, BatchingStrategy batchingStrategy, int faultSetSize) {
         LOG(String.format("Created; id=%d, port=%d", id, serverPort));
 
         this.id = id;
+        this.faultSetSize = faultSetSize;
         this.batchingStrategy = batchingStrategy;
         blockBuilder = new BlockBuilder(id);
         address = SocketAddressFactory.from("localhost", serverPort);
@@ -168,8 +170,8 @@ public class Server {
 
         PushBlockReq req = PushBlockReq.newBuilder().setBlock(blockMsg).build();
 
-        var finished = new Semaphore(0);
-        var nOk      = new AtomicInteger(0);
+        final var finished = new Semaphore(0);
+        final var nOk      = new AtomicInteger(0);
 
         class PushBlockObserver implements StreamObserver<PushBlockRsp> {
             @Override
@@ -179,7 +181,8 @@ public class Server {
 
             @Override
             public void onError(Throwable t) {
-                finished.release();
+                // time out will be reached on semaphore,
+                // no need to handle this case
             }
 
             @Override
@@ -193,8 +196,9 @@ public class Server {
                                                          .pushBlock(req,
                                                                     new PushBlockObserver()));
 
-        //TODO: wait for more than half, not to everyone
-        finished.acquire(peers.size());
+        int nPeerToWait = Integer.min(faultSetSize, peers.size());
+
+        finished.tryAcquire(nPeerToWait, 10, TimeUnit.SECONDS);
 
         if (nOk.get() < peers.size()) {
             return false;
