@@ -11,10 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -149,7 +146,7 @@ public class Server {
             pullBlock(blockId);
 
             try {
-                pending.wait(Duration.ofSeconds(5).toMillis());
+                Thread.sleep(Duration.ofSeconds(3).toMillis());
             } catch (InterruptedException ignored) {
             }
         }
@@ -218,7 +215,6 @@ public class Server {
             public void onNext(PullBlockRsp value) {
                 if (value.getSuccess() && value.hasBlock()) {
                     pending.putIfAbsent(blockId, value.getBlock());
-                    pending.notifyAll();
                 }
             }
 
@@ -283,7 +279,6 @@ public class Server {
             }
 
             pending.putIfAbsent(blockId, block);
-            pending.notifyAll();
 
             responseObserver.onNext(PushBlockRsp.newBuilder().setSuccess(true).build());
             responseObserver.onCompleted();
