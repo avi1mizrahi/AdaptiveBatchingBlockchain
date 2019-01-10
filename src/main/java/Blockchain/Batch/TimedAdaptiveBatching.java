@@ -12,7 +12,7 @@ public class TimedAdaptiveBatching extends BatchingStrategy {
         this(blockWindow, 5);
     }
 
-    TimedAdaptiveBatching(Duration blockWindow, int windowsLimit) {
+    public TimedAdaptiveBatching(Duration blockWindow, int windowsLimit) {
         appender = new Thread(() -> {
             while (!Thread.interrupted()) {
                 try {

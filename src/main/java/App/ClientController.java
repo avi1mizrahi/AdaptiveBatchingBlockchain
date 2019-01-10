@@ -18,7 +18,7 @@ public class ClientController {
     ClientController(int id) throws IOException {
         server = new ServerBuilder().setId(id)
                                     .setServerPort(40000 + id)
-                                    .setBatchingStrategy(new TimedAdaptiveBatching(Duration.ofMillis(100)))
+                                    .setBatchingStrategy(new TimedAdaptiveBatching(Duration.ofMillis(100), 10))
                                     .createServer()
                                     .start();
     }

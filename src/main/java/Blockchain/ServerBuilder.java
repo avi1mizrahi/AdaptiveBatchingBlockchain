@@ -1,5 +1,6 @@
 package Blockchain;
 
+import Blockchain.Batch.AdaptiveBatching;
 import Blockchain.Batch.BatchingStrategy;
 
 import java.util.MissingResourceException;
@@ -8,7 +9,7 @@ public class ServerBuilder {
     private int serverPort   = -1;
     private int id           = -1;
     private int faultSetSize = 3;
-    private BatchingStrategy batchingStrategy;
+    private BatchingStrategy batchingStrategy = new AdaptiveBatching();
 
     public ServerBuilder setFaultSetSize(int faultSetSize) {
         this.faultSetSize = faultSetSize;
@@ -33,7 +34,6 @@ public class ServerBuilder {
     public Server createServer() {
         if (id == -1) throw new MissingResourceException("unset id", int.class.getName(), "");
         if (serverPort == -1) throw new MissingResourceException("unset port", int.class.getName(), "");
-        if (batchingStrategy == null) throw new MissingResourceException("missing strategy", BatchingStrategy.class.getName(), "");
 
         return new Server(id, serverPort, batchingStrategy, faultSetSize);
     }
