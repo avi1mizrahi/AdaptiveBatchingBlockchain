@@ -4,9 +4,7 @@ import Blockchain.Transaction.Transaction;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -73,6 +71,10 @@ class Ledger {
     @Nullable
     Integer get(Account account) {
         return state.getAcquire().getData().get(account);
+    }
+
+    Set<Account> getAccounts() {
+        return state.getAcquire().getData().keySet();
     }
 
     synchronized void apply(Block block) {

@@ -336,6 +336,12 @@ public class Server {
         return ledger.get(account);
     }
 
+    public Set<Account> getAccounts() {
+        //LOG("getAccounts");
+
+        return ledger.getAccounts();
+    }
+
     public TxId transfer(Account from, Account to, int amount) {
         try (var ignored = batchingStrategy.createRequestWindow()) {
 
