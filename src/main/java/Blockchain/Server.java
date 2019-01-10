@@ -13,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
@@ -140,11 +141,15 @@ public class Server {
             return;
         }
 
-        var blockMsg = pending.remove(blockId);
-        if (blockMsg == null) {
-            var message = "Block " + blockId + " wasn't received yet";
-            LOG(message);
-            throw new RuntimeException(message);//TODO remove, what if it's not here yet? need to pull
+        BlockMsg blockMsg;
+        while ((blockMsg = pending.remove(blockId)) == null) {
+            LOG("Block " + blockId + " wasn't received yet");
+            pullBlock(blockId);
+
+            try {
+                pending.wait(Duration.ofSeconds(5).toMillis());
+            } catch (InterruptedException ignored) {
+            }
         }
 
         Block block = Block.from(blockMsg);
@@ -199,6 +204,39 @@ public class Server {
         return true;
     }
 
+    private void pullBlock(@NotNull BlockId blockId) {
+        LOG("pullBlock: " + blockId);
+
+        var req = PullBlockReq.newBuilder().setId(blockId.toBlockIdMsg()).build();
+
+        class PullBlockObserver implements StreamObserver<PullBlockRsp> {
+            @Override
+            public void onNext(PullBlockRsp value) {
+                if (value.getSuccess() && value.hasBlock()) {
+                    pending.putIfAbsent(blockId, value.getBlock());
+                    pending.notifyAll();
+                }
+            }
+
+            @Override
+            public void onError(Throwable t) {
+            }
+
+            @Override
+            public void onCompleted() {
+            }
+        }
+
+        // pick a random peer and ask him for this block
+        peers.values()
+             .stream()
+             .skip((int) (peers.size() * Math.random()))
+             .findFirst()
+             .ifPresent(peerServer -> peerServer.stub()
+                                                .withDeadlineAfter(5, TimeUnit.SECONDS)
+                                                .pullBlock(req, new PullBlockObserver()));
+    }
+
     private void trySealBlock() throws InterruptedException {
         if (blockBuilder.isEmpty()) {
             return;
@@ -241,6 +279,7 @@ public class Server {
             }
 
             pending.putIfAbsent(blockId, block);
+            pending.notifyAll();
 
             responseObserver.onNext(PushBlockRsp.newBuilder().setSuccess(true).build());
             responseObserver.onCompleted();
@@ -248,20 +287,24 @@ public class Server {
 
         @Override
         public void pullBlock(PullBlockReq request, StreamObserver<PullBlockRsp> responseObserver) {
-            BlockMsg block = pending.get(request.getId());
+            BlockId id = BlockId.from(request.getId());
+            LOG("pullBlock requested " + id);
 
-            LOG("pullBlock requested " + block.getId());
-
+            BlockMsg blockMsg;
+            blockMsg = Optional.ofNullable(pending.get(id)) // check in the pending list
+                               .orElseGet(
+                                       () -> ledger.getBlock(id) // else check in the ledger
+                                                   .map(Block::toBlockMsg) // transform it if found
+                                                   .orElse(null));  // at least we tried
             var builder = PullBlockRsp.newBuilder();
-            if (block != null) {
-                builder.setBlock(block).setSuccess(true);
+            if (blockMsg != null) {
+                builder.setBlock(blockMsg).setSuccess(true);
             }
 
             responseObserver.onNext(builder.build());
             responseObserver.onCompleted();
         }
     }
-
 
     public TxId createAccount() {
         try (var ignored = batchingStrategy.createRequestWindow()) {

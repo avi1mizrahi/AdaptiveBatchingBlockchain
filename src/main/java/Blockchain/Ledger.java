@@ -82,6 +82,10 @@ class Ledger {
         chain.put(block.getId(), block);
     }
 
+    Optional<Block> getBlock(BlockId blockId) {
+        return Optional.ofNullable(chain.get(blockId));
+    }
+
     Optional<Transaction.Result> getStatus(TxId txId) {
         Block block = chain.get(BlockId.from(txId));
         if (block == null) return Optional.empty();
