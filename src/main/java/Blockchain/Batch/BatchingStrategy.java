@@ -25,7 +25,7 @@ public abstract class BatchingStrategy {
         this.batcherProxy = batcherProxy;
     }
 
-    public abstract void shutdown();
+    public void shutdown() {}
 
     public RequestWindow createRequestWindow() {
         return new RequestWindow(this);

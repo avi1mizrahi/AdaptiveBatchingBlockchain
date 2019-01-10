@@ -25,9 +25,9 @@ public class Server {
     private final InetSocketAddress address;
     private final int               faultSetSize;
 
-    private final BatchingStrategy batchingStrategy;
+    private       BatchingStrategy batchingStrategy;
     private final BlockBuilder     blockBuilder;
-    private final Ledger           ledger = new Ledger();
+    private final Ledger           ledger           = new Ledger();
 
     private final ConcurrentHashMap<Integer, PeerServer> peers   = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<BlockId, BlockMsg>   pending = new ConcurrentHashMap<>();
@@ -65,6 +65,12 @@ public class Server {
 
     private static void LOG(Object msg) {
         System.out.println("[SERVER] " + msg);
+    }
+
+    public void changeStrategy(BatchingStrategy batchingStrategy) {
+        this.batchingStrategy.shutdown();
+        this.batchingStrategy = batchingStrategy;
+        batchingStrategy.start(new Batcher());
     }
 
     public Server start() throws IOException {

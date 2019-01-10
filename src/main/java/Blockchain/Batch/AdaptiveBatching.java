@@ -28,9 +28,4 @@ public class AdaptiveBatching extends BatchingStrategy {
     public void start(BatcherProxy batcherProxy) {
         super.start(batcherProxy);
     }
-
-    @Override
-    public void shutdown() {
-
-    }
 }
