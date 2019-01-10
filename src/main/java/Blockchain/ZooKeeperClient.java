@@ -131,6 +131,7 @@ public class ZooKeeperClient implements Watcher {
         return SocketAddressFactory.from(getData(memberPath));
     }
 
+    synchronized
     private void updateMembership() throws KeeperException, InterruptedException {
         List<String> children;
         LOG("updateMembership");
@@ -162,19 +163,18 @@ public class ZooKeeperClient implements Watcher {
                   null);
     }
 
+    synchronized
     private void updateBlockchain() throws KeeperException, InterruptedException {
         LOG("updateBlockchain");
-        synchronized (blockchainRootPath) {
-            zk.getChildren(blockchainRootPath, true)
-              .stream()
-              .map(Integer::parseInt)
-              .filter(blockIdx -> blockIdx > lastSeenBlock)
-              .sorted()
-              .forEachOrdered(blockIdx -> {
-                  server.onBlockChained(getBlockId(blockIdx), blockIdx);
-                  lastSeenBlock = blockIdx;
-              });
-        }
+        zk.getChildren(blockchainRootPath, true)
+          .stream()
+          .map(Integer::parseInt)
+          .filter(blockIdx -> blockIdx > lastSeenBlock)
+          .sorted()
+          .forEachOrdered(blockIdx -> {
+              server.onBlockChained(getBlockId(blockIdx), blockIdx);
+              lastSeenBlock = blockIdx;
+          });
     }
 
     @Override

@@ -8,7 +8,9 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -25,11 +27,9 @@ public class Server {
     private final BlockBuilder     blockBuilder;
     private final Ledger           ledger = new Ledger();
 
-    private final ConcurrentHashMap<BlockId, BlockMsg> pending = new ConcurrentHashMap<>();
-    private final BoundedMap<TxId, Transaction.Result> results = new BoundedMap<>(1 << 15);
-
-    private final Set<Integer>             lostPeerIds       = new HashSet<>();// TODO: protect
-    private final Map<Integer, PeerServer> peers             = new HashMap<>();// TODO: protect
+    private final ConcurrentHashMap<Integer, PeerServer> peers   = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<BlockId, BlockMsg>   pending = new ConcurrentHashMap<>();
+    private final BoundedMap<TxId, Transaction.Result>   results = new BoundedMap<>(1 << 10);
 
     private final io.grpc.Server  serverListener;
     private final ZooKeeperClient zkClient;
@@ -98,10 +98,11 @@ public class Server {
                                              }).collect(Collectors.toList());
 
         for (Integer peerId : removedPeersIds) {
-            lostPeerIds.add(peerId);
-            final PeerServer peer = peers.remove(peerId);
-            peer.shutdown();
-            cleanUpServerBlocks(peerId);
+            final PeerServer peer = peers.replace(peerId, null);
+            if (peer != null) {
+                peer.shutdown();
+                cleanUpServerBlocks(peerId);
+            }
         }
 
         // add new peers
@@ -197,7 +198,7 @@ public class Server {
             return false;
         }
 
-        pending.putIfAbsent(block.getId(), blockMsg);
+        pending.put(block.getId(), blockMsg);
         return true;
     }
 
@@ -237,7 +238,7 @@ public class Server {
 
             LOG("pushBlock requested " + blockId);
 
-            if (lostPeerIds.contains(blockId.getServerId())) {
+            if (peers.get(blockId.getServerId()) == null) {
                 LOG("pushBlock rejected");
                 return; // don't listen to this zombie
             }
