@@ -28,7 +28,11 @@ public class ZooKeeperClient implements Watcher {
     private final        String    membershipPath;
     private final        Server    server;
     private              ZooKeeper zk;
-    private              Integer   lastSeenBlock      = 0;
+    private              Integer   lastSeenBlock      = -1;
+
+    private static void LOG(Object msg) {
+        System.out.println("[ZkClient] " + msg);
+    }
 
     ZooKeeperClient(@NotNull Server server) {
         try {
@@ -38,7 +42,7 @@ public class ZooKeeperClient implements Watcher {
 
         this.server = server;
         membershipPath = membershipRootPath + "/" + server.getId();
-        System.out.println(zkAddress);
+        LOG(zkAddress);
         try {
             zk = createZooKeeper();
         } catch (IOException e1) {
@@ -66,6 +70,7 @@ public class ZooKeeperClient implements Watcher {
     }
 
     private void init() throws KeeperException, InterruptedException {
+        LOG("init");
         // Try to create the membership first block if not exist
         try {
             zk.create(membershipRootPath, null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
@@ -128,6 +133,7 @@ public class ZooKeeperClient implements Watcher {
 
     private void updateMembership() throws KeeperException, InterruptedException {
         List<String> children;
+        LOG("updateMembership");
         children = zk.getChildren(membershipRootPath, true);
 
         Set<Integer> view = children.stream()
@@ -139,6 +145,7 @@ public class ZooKeeperClient implements Watcher {
     }
 
     void postBlock(BlockId blockId) {
+        LOG("postBlock " + blockId);
         // Try to create the znode of this block under /Blockchain.
         zk.create(blockchainRootPath + "/",
                   blockId.toByteArray(),
@@ -150,6 +157,7 @@ public class ZooKeeperClient implements Watcher {
                       }
 
                       String idx = name.substring(blockchainRootPath.length() + 1);
+                      LOG("CHAINED! " + blockId + " idx=" +idx);
                       server.onBlockChained(blockId,
                                             Integer.valueOf(idx));
                   },
@@ -157,6 +165,7 @@ public class ZooKeeperClient implements Watcher {
     }
 
     private void updateBlockchain() throws KeeperException, InterruptedException {
+        LOG("updateBlockchain");
         synchronized (blockchainRootPath) {
             zk.getChildren(blockchainRootPath, true)
               .stream()
@@ -175,8 +184,7 @@ public class ZooKeeperClient implements Watcher {
         try {
             switch (event.getType()) {
                 case None:
-                    System.out.println(
-                            "Watcher called on state change with new state " + event.getState());
+                    LOG("Watcher called on state change with new state " + event.getState());
                     switch (event.getState()) {
                         case SyncConnected:
                             init();
@@ -189,9 +197,8 @@ public class ZooKeeperClient implements Watcher {
                     }
                     break;
                 case NodeChildrenChanged:
-                    System.out.println(
-                            "Watcher called with event type " + event.getType() + " on znode " +
-                                    event.getPath());
+                    LOG("Watcher called with event type " + event.getType() + " on znode " +
+                                event.getPath());
                     if (event.getPath().equals(membershipRootPath)) {
                         updateMembership();
                     }
@@ -201,7 +208,7 @@ public class ZooKeeperClient implements Watcher {
 
                     break;
                 default:
-                    System.out.println("Watcher called with event type " + event.getType());
+                    LOG("Watcher called with event type " + event.getType());
             }
         } catch (KeeperException | InterruptedException | IOException e) {
             e.printStackTrace();

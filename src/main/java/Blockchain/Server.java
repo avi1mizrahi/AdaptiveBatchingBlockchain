@@ -66,7 +66,7 @@ public class Server {
         server.awaitTermination();
     }
 
-    private void LOG(String msg) {
+    private static void LOG(Object msg) {
         System.out.println("[SERVER] " + msg);
     }
 
@@ -155,7 +155,7 @@ public class Server {
             results.putAll(block.getResults());
         }
 
-        LOG( " appended!");
+        LOG( " appended! " + blockId + " idx=" + idx);
         System.out.println(block);
     }
 
