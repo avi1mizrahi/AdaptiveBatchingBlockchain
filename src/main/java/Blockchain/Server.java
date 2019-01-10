@@ -36,6 +36,8 @@ public class Server {
 
 
     Server(int id, int serverPort, Duration blockWindow) {
+        LOG(String.format("Created; id=%d, port=%d", id, serverPort));
+
         this.id = id;
         blockBuilder = new BlockBuilder(id);
         address = SocketAddressFactory.from("localhost", serverPort);

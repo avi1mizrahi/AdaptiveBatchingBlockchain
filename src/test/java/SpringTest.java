@@ -13,13 +13,17 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.concurrent.atomic.LongAdder;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,classes={Application.class})
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, classes = {Application.class})
 public class SpringTest {
     private static final int POLLING_DELAY_MS   = 100;
     private static final int POLLING_ITERATIONS = 10 * 10;
@@ -94,7 +98,7 @@ public class SpringTest {
         final var       threads  = new ArrayList<Thread>();
         final LongAdder finished = new LongAdder();
 
-        final int nThreads  = 150;
+        final int nThreads  = 100;
         final int nAccounts = 10;
         final int nRepeat   = 10;
 
