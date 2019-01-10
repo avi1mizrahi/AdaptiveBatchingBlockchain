@@ -98,7 +98,7 @@ public class SpringTest {
         final var       threads  = new ArrayList<Thread>();
         final LongAdder finished = new LongAdder();
 
-        final int nThreads  = 100;
+        final int nThreads  = 150;
         final int nAccounts = 10;
         final int nRepeat   = 10;
 
