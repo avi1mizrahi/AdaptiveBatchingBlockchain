@@ -1,4 +1,4 @@
-syntax = "proto2";
+syntax = "proto3";
 
 option java_multiple_files = true;
 
@@ -8,22 +8,22 @@ message CreateAccountReq {
 }
 
 message DeleteAccountReq {
-    required uint32 accountId = 2;
+    uint32 accountId = 2;
 }
 
 message AddAmountReq {
-    required uint32 accountId = 2;
-    required uint32 amount    = 3;
+    uint32 accountId = 2;
+    uint32 amount    = 3;
 }
 
 message GetAmountReq {
-    required uint32 accountId = 2;
+    uint32 accountId = 2;
 }
 
 message TransferReq {
-    required uint32 fromId   = 1;
-    required uint32 toId     = 2;
-    required uint32 amount   = 3;
+    uint32 fromId   = 1;
+    uint32 toId     = 2;
+    uint32 amount   = 3;
 }
 
 message Tx {
@@ -37,32 +37,32 @@ message Tx {
 }
 
 message BlockId {
-    required uint32 serverId     = 1;
-    required uint32 serialNumber = 2;
+    uint32 serverId     = 1;
+    uint32 serialNumber = 2;
 }
 
 message BlockMsg {
     repeated Tx         txs = 1;
-    required BlockId    id  = 2;
+    BlockId    id  = 2;
 }
 
 
 message PushBlockReq {
-    required BlockMsg block = 1;
+    BlockMsg block = 1;
 }
 
 message PushBlockRsp {
-    required bool success = 1;
+    bool success = 1;
 }
 
 
 message PullBlockReq {
-    required BlockId id = 1;
+    BlockId id = 1;
 }
 
 message PullBlockRsp {
-    required bool       success = 1;
-    required BlockMsg   block   = 2;
+    bool       success = 1;
+    BlockMsg   block   = 2;
 }
 
 
