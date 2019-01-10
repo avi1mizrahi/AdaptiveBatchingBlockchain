@@ -1,12 +1,14 @@
 package App;
 
 import Blockchain.*;
+import Blockchain.Batch.TimedAdaptiveBatching;
 import Blockchain.Transaction.NewAccountTx;
 import Blockchain.Transaction.Transaction;
 import org.apache.log4j.Logger;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.Duration;
 
 @RestController
 public class ClientController {
@@ -16,6 +18,7 @@ public class ClientController {
     ClientController(int id) throws IOException {
         server = new ServerBuilder().setId(id)
                                     .setServerPort(40000 + id)
+                                    .setBatchingStrategy(new TimedAdaptiveBatching(Duration.ofMillis(100)))
                                     .createServer()
                                     .start();
     }
@@ -23,7 +26,6 @@ public class ClientController {
     @PostMapping("/accounts")
     TxId newAccount() {
         return server.createAccount();
-
     }
 
     @DeleteMapping("/accounts/{id}")

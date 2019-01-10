@@ -1,11 +1,19 @@
 package Blockchain;
 
-import java.time.Duration;
+import Blockchain.Batch.BatchingStrategy;
+
+import java.util.MissingResourceException;
 
 public class ServerBuilder {
-    private int      serverPort  = -1;
-    private Duration blockWindow = Duration.ofMillis(100);
-    private int      id          = -1;
+    private int serverPort   = -1;
+    private int id           = -1;
+
+    private BatchingStrategy batchingStrategy;
+
+    public ServerBuilder setBatchingStrategy(BatchingStrategy batchingStrategy) {
+        this.batchingStrategy = batchingStrategy;
+        return this;
+    }
 
     public ServerBuilder setId(int id) {
         this.id = id;
@@ -17,13 +25,11 @@ public class ServerBuilder {
         return this;
     }
 
-    public ServerBuilder setBlockWindow(Duration blockWindow) {
-        this.blockWindow = blockWindow;
-        return this;
-    }
-
     public Server createServer() {
-        assert id != -1  && serverPort != -1;
-        return new Server(id, serverPort, blockWindow);
+        if (id == -1) throw new MissingResourceException("unset id", int.class.getName(), "");
+        if (serverPort == -1) throw new MissingResourceException("unset port", int.class.getName(), "");
+        if (batchingStrategy == null) throw new MissingResourceException("missing strategy", BatchingStrategy.class.getName(), "");
+
+        return new Server(id, serverPort, batchingStrategy);
     }
 }

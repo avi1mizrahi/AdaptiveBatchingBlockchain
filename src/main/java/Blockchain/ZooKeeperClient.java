@@ -12,7 +12,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -49,24 +48,6 @@ public class ZooKeeperClient implements Watcher {
             // TODO: need to think what to do if there is an error here
             e1.printStackTrace();
         }
-    }
-
-    public static void main(String[] args) throws IOException {
-        int    CLIENT_PORT = 55555;
-        int    SERVER_PORT = 44444;
-        String LOCALHOST   = "localhost";
-        Server server = new ServerBuilder().setId(1)
-                                           .setServerPort(SERVER_PORT)
-                                           .setBlockWindow(Duration.ofMillis(100)) // TODO: 100 is just to accelerate the tests, don't know what is "good value"
-                                           .createServer()
-                                           .start();
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        ZooKeeperClient zookeeperClient = new ZooKeeperClient(server);
-
     }
 
     private void init() throws KeeperException, InterruptedException {

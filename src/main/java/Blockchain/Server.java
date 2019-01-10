@@ -1,5 +1,8 @@
 package Blockchain;
 
+import Blockchain.Batch.BatcherProxy;
+import Blockchain.Batch.BatchingStrategy;
+import Blockchain.Batch.TimedAdaptiveBatching;
 import Blockchain.Transaction.*;
 import ServerCommunication.*;
 import io.grpc.stub.StreamObserver;
@@ -35,23 +38,13 @@ public class Server {
     private final ZooKeeperClient zkClient;
 
 
-    Server(int id, int serverPort, Duration blockWindow) {
+    Server(int id, int serverPort, BatchingStrategy batchingStrategy) {
         LOG(String.format("Created; id=%d, port=%d", id, serverPort));
 
         this.id = id;
+        this.batchingStrategy = batchingStrategy;
         blockBuilder = new BlockBuilder(id);
         address = SocketAddressFactory.from("localhost", serverPort);
-        batchingStrategy = new TimedAdaptiveBatching(new BatcherProxy() {
-            @Override
-            public void batch() throws InterruptedException {
-                trySealBlock();
-            }
-
-            @Override
-            public void interrupted() {
-                shutdown();
-            }
-        }, blockWindow);
         serverListener = io.grpc.ServerBuilder.forPort(serverPort)
                                               .addService(new ServerRpc())
                                               .build();
@@ -63,6 +56,8 @@ public class Server {
         if (args.length >= 1) port = Integer.parseInt(args[0]);
         Server server = new ServerBuilder().setId(1)
                                            .setServerPort(port - 11111)
+                                           .setBatchingStrategy(
+                                                   new TimedAdaptiveBatching(Duration.ofMillis(100)))
                                            .createServer()
                                            .start();
         server.awaitTermination();
@@ -73,7 +68,7 @@ public class Server {
     }
 
     public Server start() throws IOException {
-        batchingStrategy.start();
+        batchingStrategy.start(new Batcher());
         serverListener.start();
         return this;
     }
@@ -140,7 +135,7 @@ public class Server {
         LOG("onBlockChained " + blockId);
 
         int chainSize = ledger.chainSize();
-        if (chainSize != idx) {
+        if (chainSize != idx) {// actually it should never happen, zk keep the block state
             LOG("not in order: " + chainSize + "!=" + idx);
             return;
         }
@@ -327,5 +322,17 @@ public class Server {
             result = results.remove(txId);
         }
         return result;
+    }
+
+    private class Batcher implements BatcherProxy {
+        @Override
+        public void batch() throws InterruptedException {
+            trySealBlock();
+        }
+
+        @Override
+        public void interrupted() {
+            shutdown();
+        }
     }
 }
