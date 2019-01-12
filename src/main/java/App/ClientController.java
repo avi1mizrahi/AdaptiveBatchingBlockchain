@@ -4,7 +4,6 @@ import Blockchain.*;
 import Blockchain.Batch.TimedAdaptiveBatching;
 import Blockchain.Transaction.NewAccountTx;
 import Blockchain.Transaction.Transaction;
-import org.apache.log4j.Logger;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -12,12 +11,12 @@ import java.time.Duration;
 
 @RestController
 public class ClientController {
-    private static Logger log = Logger.getLogger(ClientController.class.getName());
     private final  Server server;
 
-    ClientController(int id) throws IOException {
+    ClientController(int id, String host) throws IOException {
+        System.out.println("Client controller is starting:" + id + " host: " + host);
         server = new ServerBuilder().setId(id)
-                                    .setServerPort(40000 + id)
+                                    .setServerAddress(SocketAddressFactory.from(host, 40000 + id))
                                     .setBatchingStrategy(new TimedAdaptiveBatching(Duration.ofMillis(100), 10))
                                     .createServer()
                                     .start();

@@ -8,16 +8,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
 class Config {
-    static AtomicInteger id = new AtomicInteger(1);
+    @Bean
+    public static int id() {
+        return id;
+    }
 
     @Bean
-    int id() {
-        return Config.id.getAndIncrement();
+    public static String host() {
+        return host;
     }
+
+    static int    id;
+    static String host;
+
+
 }
 
 @SpringBootApplication
@@ -26,8 +33,11 @@ public class Application {
     @Autowired
     public Application(ApplicationArguments args) {
         List<String> argv = args.getNonOptionArgs();
-        if (!argv.isEmpty())
-            Config.id.set(Integer.valueOf(argv.get(0)));
+        if (!argv.isEmpty()) {
+            System.out.println("Got argv:" + argv);
+            Config.id = Integer.valueOf(argv.get(0));
+            Config.host = argv.get(1);
+        }
     }
 
     public static void main(String[] args) {

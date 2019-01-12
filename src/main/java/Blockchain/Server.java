@@ -37,30 +37,18 @@ public class Server {
     private final ZooKeeperClient zkClient;
 
 
-    Server(int id, int serverPort, BatchingStrategy batchingStrategy, int faultSetSize) {
-        LOG(String.format("Created; id=%d, port=%d", id, serverPort));
+    Server(int id, InetSocketAddress myAddress, BatchingStrategy batchingStrategy, int faultSetSize) {
+        LOG(String.format("Created; id=%d, port=%s", id, myAddress));
 
         this.id = id;
         this.faultSetSize = faultSetSize;
         this.batchingStrategy = batchingStrategy;
         blockBuilder = new BlockBuilder(id);
-        address = SocketAddressFactory.from("localhost", serverPort);
-        serverListener = io.grpc.ServerBuilder.forPort(serverPort)
+        address = SocketAddressFactory.from(myAddress.getHostName(), myAddress.getPort());
+        serverListener = io.grpc.ServerBuilder.forPort(myAddress.getPort())
                                               .addService(new ServerRpc())
                                               .build();
         zkClient = new ZooKeeperClient(this);
-    }
-
-    public static void main(String[] args) throws IOException, InterruptedException {
-        int port = 55555;
-        if (args.length >= 1) port = Integer.parseInt(args[0]);
-        Server server = new ServerBuilder().setId(1)
-                                           .setServerPort(port - 11111)
-                                           .setBatchingStrategy(
-                                                   new TimedAdaptiveBatching(Duration.ofMillis(100)))
-                                           .createServer()
-                                           .start();
-        server.awaitTermination();
     }
 
     private static void LOG(Object msg) {
