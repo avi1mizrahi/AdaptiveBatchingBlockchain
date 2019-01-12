@@ -80,6 +80,24 @@ def add(id, amount):
             sleep(.2)
     print()
 
+def delete(id):
+    conn.request("DELETE", "/accounts/%s" % (id,) , "", headers)
+
+    res = conn.getresponse()
+    data = res.read()
+    j = json.loads(data)
+
+    is_committed = False
+    while not is_committed:
+        try:
+            is_committed = getTxStatus(j)
+            break
+        except NotReady:
+            print('waiting')
+            sleep(.2)
+    print("Deleted: ", id)
+
+
 acc = createAccount()
 add(acc, 76)
 
