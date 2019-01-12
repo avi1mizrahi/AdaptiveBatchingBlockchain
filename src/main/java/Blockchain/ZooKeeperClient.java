@@ -60,10 +60,14 @@ public class ZooKeeperClient implements Watcher {
         }
 
         // Try to create the znode of this sever under /membership.
-        zk.create(membershipPath,
-                  getMembershipData(),
-                  ZooDefs.Ids.OPEN_ACL_UNSAFE,
-                  CreateMode.EPHEMERAL);
+        try {
+            zk.create(membershipPath,
+                      getMembershipData(),
+                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                      CreateMode.EPHEMERAL);
+        } catch (KeeperException.NodeExistsException ignored) {
+            // It's OK
+        }
 
         // Try to create the blockchain first block if not exist
         try {
