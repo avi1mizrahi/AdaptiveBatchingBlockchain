@@ -126,15 +126,32 @@ class Client:
         print("Deleted: ", id)
 
 
-c1 = Client("192.168.1.13:8010")
-acc1 = c1.createAccount()
-acc2 = c1.createAccount()
-c1.add(acc1, 100)
-c1.add(acc2, 700)
-c1.transfer(acc1, acc2, 70)
-c1.transfer(acc1, acc2, 70)
-c1.transfer(acc1, acc2, 70)
-c1.transfer(acc1, acc2, 70)
-print("amount = ", c1.getAmount(acc2))
+c1 = Client("127.0.0.1:8010")
+c2 = Client("132.68.47.109:8020")
 
+acc11 = c1.createAccount()
+acc12 = c1.createAccount()
 
+acc21 = c2.createAccount()
+
+c1.add(acc21, 100)
+c1.add(acc11, 100)
+c2.add(acc12, 700)
+
+c1.transfer(acc11, acc12, 70)
+c2.transfer(acc11, acc12, 70)
+c2.transfer(acc21, acc12, 70)
+
+print("c11 amount = ", c1.getAmount(acc11))
+print("c11 amount = ", c2.getAmount(acc11))
+
+print("c12 amount = ", c1.getAmount(acc12))
+print("c12 amount = ", c2.getAmount(acc12))
+
+print("c21 amount = ", c1.getAmount(acc21))
+print("c21 amount = ", c2.getAmount(acc21))
+
+c1.delete(acc11)
+c2.delete(acc12)
+c1.delete(acc11)
+c2.delete(acc21)
