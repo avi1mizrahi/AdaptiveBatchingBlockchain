@@ -17,7 +17,7 @@ public class ClientController {
         System.out.println("Client controller is starting:" + id + " host: " + host);
         server = new ServerBuilder().setId(id)
                                     .setServerAddress(SocketAddressFactory.from(host, 40000 + id))
-                                    .setBatchingStrategy(new TimedAdaptiveBatching(Duration.ofMillis(100), 10))
+                                    .setBatchingStrategy(new TimedAdaptiveBatching(Duration.ofMillis(500), 20))
                                     .createServer()
                                     .start();
     }

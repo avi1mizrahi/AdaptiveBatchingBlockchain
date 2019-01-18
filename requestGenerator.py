@@ -42,7 +42,7 @@ class Client:
         while not id:
             id = self.getAccountId(j)
             print('waiting')
-            sleep(.2)
+            sleep(.5)
     
         print("Created ", id)
         return id
@@ -87,7 +87,7 @@ class Client:
                 break
             except self.NotReady:
                 print('waiting')
-                sleep(.2)
+                sleep(.5)
         print("transferred")
     
     def add(self, id, amount):
@@ -105,11 +105,11 @@ class Client:
                 break
             except self.NotReady:
                 print('waiting')
-                sleep(.2)
+                sleep(.5)
         print("added")
     
     def delete(self, id):
-        self.conn.request("DELETE", "/accounts/%s" % (id,) , "", self.self.headers)
+        self.conn.request("DELETE", "/accounts/%s" % (id,), "", self.headers)
     
         res = self.conn.getresponse()
         data = res.read()
@@ -122,7 +122,7 @@ class Client:
                 break
             except self.NotReady:
                 print('waiting')
-                sleep(.2)
+                sleep(.5)
         print("Deleted: ", id)
 
 
